@@ -1,0 +1,54 @@
+[build-system]
+requires = ['poetry-core']
+build-backend = 'poetry.core.masonry.api'
+
+[tool.poetry]
+name = 'clickext'
+version = '0.0.0'
+description = 'Extended features for the Python click library'
+readme = 'README.md'
+license = 'MIT'
+authors = [
+  'lojoja <dev@lojoja.com>'
+]
+homepage = 'https://github.com/lojoja/clickext'
+repository = 'https://github.com/lojoja/clickext'
+documentation = 'https://github.com/lojoja/clickext'
+classifiers = [
+  'Development Status :: 3 - Alpha',
+  'Programming Language :: Python :: 3',
+  'Programming Language :: Python :: 3.10',
+]
+
+[tool.poetry.dependencies]
+python = '^3.10'
+click = '^8.0'
+
+[tool.poetry.group.dev.dependencies]
+black = '^22.8.0'
+pylint = '^2.15.3'
+pytest = '^7.1.3'
+pytest-cov = '^3.0.0'
+
+[tool.black]
+line-length = 120
+target_version = ['py310']
+include = '\.pyi?$'
+
+[tool.coverage.run]
+omit = ['tests/']
+
+[tool.coverage.report]
+exclude_lines = [
+  'pragma: no cover',
+  'def __repr__',
+  'if log:'
+]
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pytest]
+addopts = '--cov=clickext --cov-config=pyproject.toml --cov-report=html --no-cov-on-fail'
+testpaths = ['tests']
+
