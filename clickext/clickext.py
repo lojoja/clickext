@@ -173,10 +173,10 @@ class CommonOptionGroup(AliasAwareGroup):
     common options before the command is invoked.
 
     ```
-    @click.group(cls=CommonOptionGroup, common_options={
-        'foo': click.Option(["--foo", "-f"], is_flag=True),
-        'bar': click.Option(["--bar", "-b"], is_flag=True)
-        }
+    @click.group(cls=CommonOptionGroup, common_options=[
+            'foo': click.Option(["--foo", "-f"], is_flag=True),
+            'bar': click.Option(["--bar", "-b"], is_flag=True)
+        ]
     )
     def cli():
         ...
