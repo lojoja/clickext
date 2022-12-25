@@ -11,9 +11,9 @@ license = 'MIT'
 authors = [
   'lojoja <dev@lojoja.com>'
 ]
-homepage = 'https://github.com/lojoja/clickext'
-repository = 'https://github.com/lojoja/clickext'
-documentation = 'https://github.com/lojoja/clickext'
+homepage = 'https://gitea.lojoja.com/lojoja/clickext'
+repository = 'https://gitea.lojoja.com/lojoja/clickext'
+documentation = 'https://gitea.lojoja.com/lojoja/clickext'
 classifiers = [
   'Development Status :: 3 - Alpha',
   'Programming Language :: Python :: 3',

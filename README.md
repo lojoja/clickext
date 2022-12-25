@@ -13,10 +13,8 @@ Extended features for the Python click library. Includes global logging configur
 
 ### Local
 
-*Local installation requires the gitea.lojoja.com package registry is added to the pip configuration*
-
 ```
-pip install clickext
+pip install --trusted-host=gitea.lojoja.com --extra-index-url=https://gitea.lojoja.com/api/packages/lojoja/pypi/simple clickext
 ```
 
 ### Remote
