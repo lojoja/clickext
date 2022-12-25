@@ -5,10 +5,25 @@ Extended features for the Python click library. Includes global logging configur
 
 ## Requirements
 
-* Python 3.10.x+
+* Python 3.10.x
+* click 8.x.x
 
 
 ## Installation
+
+### Local
+
+*Local installation requires the gitea.lojoja.com package registry is added to the pip configuration*
+
+```
+pip install clickext
+```
+
+### Remote
+
+```
+pip install git+ssh://github.com/lojoja/clickext@main
+```
 
 ## Usage
 
@@ -33,22 +48,22 @@ def cli():
 
 @click.command(cls=clickext.AliasCommand, aliases=["a"])
 def aliased():
-  click.echo("multiple options")
+  click.echo("aliased or a")
 
 @click.command():
 def unaliased():
-  click.echo("only me")
+  click.echo("only unaliased")
 ```
 
 Call commands:
 
 ```
 > cli aliased
-ok!
+aliased or a
 > cli a
-ok!
+aliased or a
 > cli unaliased
-only me
+only unaliased
 ```
 
 ### Commands with common options
@@ -83,7 +98,7 @@ Call commands:
 ```
 > cli hello
 Hello.
-> cli hello --excite
+> cli hello --excited
 Hello!
 > cli hi
 Hi.
@@ -104,7 +119,7 @@ import clickext
 
 logger = logging.getLogger(__name__)
 
-@click.group(cls=clickext.CommonOptionGroup, common_options=[
+@click.group(cls=clickext.DebugCommonOptionGroup, common_options=[
   click.Option(["--excited"], is_flag=True, default=False)
 ])
 def cli():
