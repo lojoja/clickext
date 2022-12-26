@@ -25,10 +25,11 @@ python = '^3.10'
 click = '^8'
 
 [tool.poetry.group.dev.dependencies]
-black = '^22'
-pylint = '^2'
-pytest = '^7'
-pytest-cov = '^3'
+black = '^22.0.0'
+flake8 = '^6.0.0'
+pylint = '^2.0.0'
+pytest = '^7.0.0'
+pytest-cov = '^3.0.0'
 
 [tool.black]
 line-length = 120
@@ -45,15 +46,20 @@ exclude_lines = [
   'def __repr__',
   'if log:'
 ]
+show_missing = true
 
 [tool.pylint.main]
-ignore-paths = ['.venv']
+ignore-paths = ['**/dist/**/*', '**/\.venv/**/*']
 
 [tool.pylint.format]
 max-line-length = 120
+
+[tool.pyright]
+ignore = ['dist/*', '.venv/*']
+venvPath = '.'
+venv = ['.venv']
 
 [tool.pytest.ini_options]
 addopts = '--cov'
 filterwarnings = ['ignore:::.*pytest_cov*']
 testpaths = ['tests']
-
