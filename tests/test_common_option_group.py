@@ -17,13 +17,13 @@ def cli():
 
 
 @cli.command()
-def shared(bar, foo):
+def shared(foo, bar):
     click.echo(f"{foo}{bar}")
 
 
 @cli.command()
 @click.option("--baz", default="baz")
-def unshared(baz, bar, foo):
+def unshared(foo, bar, baz):
     click.echo(f"{foo}{bar}{baz}")
 
 
@@ -46,3 +46,11 @@ def test_shared_options_with_unshared():
 
     assert result.exit_code == 0
     assert result.output == "TrueFalsebaz\n"
+
+
+def test_help_order():
+    runner = CliRunner()
+    result = runner.invoke(cli, ["unshared", "--help"])
+
+    assert result.exit_code == 0
+    assert "  --bar\n  --baz TEXT\n  --foo\n" in result.output

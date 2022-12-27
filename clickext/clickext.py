@@ -167,11 +167,9 @@ class AliasAwareGroup(click.Group):
 class CommonOptionGroup(AliasAwareGroup):
     """An alias-aware command group that adds common options to all commands.
 
-    Common options are specified as arguments in the command group definition decorator and are added to the end of
-    the options list. They should be included in the command function signature in the reverse order.
-
-    The `pre_invoke_hook` method can be called to do any pre-processing or configuration based on the values of the
-    common options before the command is invoked.
+    Common options are specified as arguments in the command group definition decorator. The `pre_invoke_hook` method
+    can be called to do any pre-processing or configuration based on the values of the common options before the command
+    is invoked.
 
     ```
     @click.group(cls=CommonOptionGroup, common_options=[
@@ -184,7 +182,7 @@ class CommonOptionGroup(AliasAwareGroup):
 
     @cli.command()
     @cli.Option('--baz', is_flag=True)
-    def command(baz, bar, foo):
+    def command(foo, bar, baz):
         ...
     ```
 
@@ -197,8 +195,9 @@ class CommonOptionGroup(AliasAwareGroup):
         super().__init__(*args, **kwargs)
 
     def add_command(self, cmd, name=None):
-        """Attach common options to the command and register with the command group."""
+        """Attach common options to the command, sort by name, and register with the command group."""
         cmd.params.extend(self.common_options)
+        cmd.params.sort(key=lambda x: x.opts[0])
         super().add_command(cmd, name)
 
     def invoke(self, ctx):
@@ -226,8 +225,7 @@ class DebugCommonOptionGroup(CommonOptionGroup):
     """A `CommonOptionGroup` that adds a debug option flag to all commands.
 
     The debug flag sets the verbosity level of the logger. When passed, debug statements will be output on the console,
-    otherwise only messages of `logging.INFO` or higher will be output. The debug option flag is added to the beginning
-    of the common options list and is the last item in the command signature.
+    otherwise only messages of `logging.INFO` or higher will be output.
 
     ```
     @click.group(cls=DebugCommonOptionGroup)
@@ -243,15 +241,15 @@ class DebugCommonOptionGroup(CommonOptionGroup):
     """
 
     def __init__(self, *args, **kwargs):
-        common_options = [
+        common_options = kwargs.pop("common_options", [])
+        common_options.append(
             click.Option(
                 param_decls=["--debug"],
                 is_flag=True,
                 default=False,
                 help="Show debug statements.",
             )
-        ]
-        common_options.extend(kwargs.pop("common_options", []))
+        )
         super().__init__(common_options, *args, **kwargs)
 
     def pre_invoke_hook(self, option_values, ctx):

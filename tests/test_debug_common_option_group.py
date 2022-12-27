@@ -19,7 +19,7 @@ def cli():
 
 
 @cli.command()
-def debug(bar, foo, debug):
+def debug(foo, bar, debug):
     logger = logging.getLogger(__file__)
     click.echo(f"{foo}{bar}{debug}")
     logger.debug("a conditional message")

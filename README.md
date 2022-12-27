@@ -31,8 +31,7 @@ Logging is automatically configured when the clickext library is imported. The l
 
 ### Commands with aliases
 
-Command aliases provide alternate names for a single command. Helpful for commands with long names or to shorten
-commands with many options/arguments. Aliased commands must be in a `clickext.AliasAwareGroup` command group. This group accepts aliased and unaliased commands.
+Command aliases provide alternate names for a single command. Helpful for commands with long names or to shorten commands with many options/arguments. Aliased commands must be in a `clickext.AliasAwareGroup` command group. This group accepts aliased and unaliased commands.
 
 Define commands:
 
@@ -42,15 +41,15 @@ import clickext
 
 @click.group(cls=clickext.AliasAwareGroup)
 def cli():
-  pass
+    pass
 
 @click.command(cls=clickext.AliasCommand, aliases=["a"])
 def aliased():
-  click.echo("aliased or a")
+    click.echo("aliased or a")
 
 @click.command():
 def unaliased():
-  click.echo("only unaliased")
+    click.echo("only unaliased")
 ```
 
 Call commands:
@@ -75,20 +74,20 @@ import click
 import clickext
 
 @click.group(cls=clickext.CommonOptionGroup, common_options=[
-  click.Option(["--excited"], is_flag=True, default=False)
+    click.Option(["--excited"], is_flag=True, default=False)
 ])
 def cli():
-  pass
+    pass
 
 @cli.command()
 def hello(excited):
-  punctuation = '!' if excited else '.'
-  click.echo(f"Hello{punctuation}")
+    punctuation = '!' if excited else '.'
+    click.echo(f"Hello{punctuation}")
 
 @cli.command()
 def hi(excited):
-  punctuation = '!' if excited else '.'
-  click.echo(f"Hi{punctuation}")
+    punctuation = '!' if excited else '.'
+    click.echo(f"Hi{punctuation}")
 ```
 
 Call commands:
@@ -118,16 +117,16 @@ import clickext
 logger = logging.getLogger(__name__)
 
 @click.group(cls=clickext.DebugCommonOptionGroup, common_options=[
-  click.Option(["--excited"], is_flag=True, default=False)
+    click.Option(["--excited"], is_flag=True, default=False)
 ])
 def cli():
   pass
 
 @cli.command()
 def hello(excited, debug):
-  punctuation = '!' if excited else '.'
-  logger.debug('Debug is enabled')
-  click.echo(f"Hello{punctuation}")
+    punctuation = '!' if excited else '.'
+    logger.debug('Debug is enabled')
+    click.echo(f"Hello{punctuation}")
 ```
 
 Call commands:
