@@ -36,13 +36,21 @@ def test_handle(record):
 
 
 @click.command()
-def cmd():
+@click.option("--usage", type=int)
+def cmd(usage):
     raise click.ClickException("foo")
 
 
-def test_click_exception_logging():
+@pytest.mark.parametrize(
+    ["args", "error"],
+    [
+        ([], "Error: foo\n"),
+        (["--usage", "foo"], "Error: Invalid value for '--usage': 'foo' is not a valid integer.\n"),
+    ],
+)
+def test_click_exception_logging(args, error):
     runner = CliRunner()
-    result = runner.invoke(cmd)
+    result = runner.invoke(cmd, args)
 
-    assert result != 0
-    assert result.output == "Error: foo\n"
+    assert result.exit_code != 0
+    assert result.output == error
