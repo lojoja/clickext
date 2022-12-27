@@ -43,7 +43,7 @@ class Formatter(logging.Formatter):
                 if not isinstance(msg, str):
                     msg = str(msg)
 
-                msg = "\n".join(prefix + line for line in msg.splitlines())
+                msg = "\n".join(f"{prefix}{line}" for line in msg.splitlines())
 
             return msg
 
@@ -77,6 +77,7 @@ clickext_handler.setFormatter(Formatter())
 logger.addHandler(clickext_handler)
 
 click.ClickException.show = lambda self, file=None: logger.error(self.message)
+click.UsageError.show = lambda self, file=None: logger.error(self.format_message())
 
 
 class AliasCommand(click.Command):
