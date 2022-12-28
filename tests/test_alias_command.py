@@ -1,3 +1,5 @@
+# pylint: disable=c0114,c0116
+
 from clickext import AliasCommand
 
 
