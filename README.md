@@ -43,11 +43,11 @@ import clickext
 def cli():
     pass
 
-@click.command(cls=clickext.AliasCommand, aliases=["a"])
+@cli.command(cls=clickext.AliasCommand, aliases=["a"])
 def aliased():
     click.echo("aliased or a")
 
-@click.command():
+@cli.command():
 def unaliased():
     click.echo("only unaliased")
 ```
