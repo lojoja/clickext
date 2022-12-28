@@ -14,11 +14,6 @@
 			"LSP-pylsp": {
 				"settings": {
 					"pylsp.plugins.flake8.executable": ".venv/bin/flake8",
-					"pylsp.plugins.flake8.config": "setup.cfg",
-					"pylsp.plugins.flake8.exclude": null,
-					"pylsp.plugins.pylint.args": [
-						"--rcfile=pyproject.toml"
-					],
 					"pylsp.plugins.pylint.executable": ".venv/bin/pylint"
 				}
 			}
