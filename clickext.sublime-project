@@ -11,6 +11,17 @@
 	],
 	"settings": {
 		"LSP": {
+			"ltex-ls": {
+				"settings": {
+					"ltex.dictionary": {
+						"en-US": [
+							"clickext",
+							"subcommand",
+							"unaliased"
+						]
+					},
+				}
+			},
 			"LSP-pylsp": {
 				"settings": {
 					"pylsp.plugins.flake8.executable": ".venv/bin/flake8",
