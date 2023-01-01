@@ -27,20 +27,15 @@ def test_format(level: int, subs: tuple, expected: str):
 
 
 @pytest.mark.parametrize(
-    ["record"], [(logging.LogRecord("foo", logging.ERROR, "path", 1, "msg", None, None),), ("invalid record",)]
+    ["record"],
+    [(logging.LogRecord("foo", logging.ERROR, "path", 1, "msg", None, None),), ("invalid record",)],
+    ids=["valid record", "invalid record"],
 )
-def test_handle(record):
+def test_handle(record: logging.LogRecord | None):
     handler = clickext.Handler()
     handler.setFormatter(clickext.Formatter())
-    result = handler.emit(record)
 
-    assert result == None
-
-
-@click.command()
-@click.option("--usage", type=int)
-def cmd(usage):
-    raise click.ClickException("foo")
+    assert handler.emit(record) is None  # type: ignore
 
 
 @pytest.mark.parametrize(
@@ -49,10 +44,16 @@ def cmd(usage):
         ([], "Error: foo\n"),
         (["--usage", "foo"], "Error: Invalid value for '--usage': 'foo' is not a valid integer.\n"),
     ],
+    ids=["generic error", "usage error"],
 )
-def test_click_exception_logging(args, error):
+def test_click_exception_logging(args: list[str], error: str):
+    @click.command()
+    @click.option("--usage", type=int)
+    def cmd(usage):
+        raise click.ClickException("foo")
+
     runner = CliRunner()
     result = runner.invoke(cmd, args)
 
-    assert result.exit_code != 0
+    assert result.exit_code > 0
     assert result.output == error
