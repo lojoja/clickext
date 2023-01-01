@@ -37,7 +37,7 @@ class Formatter(logging.Formatter):
     def format(self, record):
         if not record.exc_info:
             level = record.levelname.lower()
-            msg = record.msg
+            msg = record.getMessage()
 
             if level in self.colors:
                 prefix = click.style(f"{level.title()}: ", fg=self.colors[level])
