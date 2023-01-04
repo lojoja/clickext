@@ -55,19 +55,19 @@ def test_logger_init(
     logger.handlers = []  # Prevent duplicate handlers in tests
 
 
-@pytest.mark.parametrize(["exception", "args"], [(click.ClickException, []), (click.UsageError, ["--foo"])])
-def test_exception_overrides(exception: click.ClickException, args: list[str]):
+@pytest.mark.parametrize(["args"], [([],), (["--foo"],)])
+def test_exception_overrides(args: list[str]):
     logger = logging.getLogger("exc_override")
     log.init_logger(logger)
 
     @click.command()
     def cmd():
-        raise exception("foo")
+        raise click.ClickException("foo")
 
     runner = CliRunner()
     result = runner.invoke(cmd, args, color=True)
 
-    if exception == click.UsageError:
+    if args:
         assert (
             result.output
             == "Usage: cmd [OPTIONS]\nTry 'cmd --help' for help.\n\n\x1b[31mError: \x1b[0mNo such option: --foo\n"
