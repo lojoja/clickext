@@ -18,68 +18,6 @@ __all__ = [
 ]
 
 
-class Formatter(logging.Formatter):
-    """Format click log messages
-
-    Messages are prefixed with the log level. The log level is colored in console output.
-
-    Attributes:
-        colors: A `dict` mapping log levels to their display color.
-    """
-
-    colors = {
-        "critical": "red",
-        "debug": "blue",
-        "error": "red",
-        "warning": "yellow",
-    }
-
-    def format(self, record):
-        if not record.exc_info:
-            level = record.levelname.lower()
-            msg = record.getMessage()
-
-            if level in self.colors:
-                prefix = click.style(f"{level.title()}: ", fg=self.colors[level])
-
-                if not isinstance(msg, str):
-                    msg = str(msg)
-
-                msg = "\n".join(f"{prefix}{line}" for line in msg.splitlines())
-
-            return msg
-
-        return logging.Formatter.format(self, record)
-
-
-class Handler(logging.Handler):
-    """Handle click log messages
-
-    Messages are handled with `click.echo` if possible, otherwise falling back to the default handler.
-
-    Attributes:
-        error_levels: A `list` of log levels that should be considered errors.
-    """
-
-    error_levels = ["critical", "error", "warning"]
-
-    def emit(self, record):
-        try:
-            msg = self.format(record)
-            err = record.levelname.lower() in self.error_levels
-            click.echo(msg, err=err)
-        except Exception:  # pylint: disable=broad-except
-            self.handleError(record)
-
-
-logger = logging.getLogger()
-
-clickext_handler = Handler()
-clickext_handler.setFormatter(Formatter())
-logger.addHandler(clickext_handler)
-
-click.ClickException.show = lambda self, file=None: logger.error(self.message)
-click.UsageError.show = lambda self, file=None: logger.error(self.format_message())
 
 
 class AliasCommand(click.Command):
