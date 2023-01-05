@@ -6,7 +6,7 @@ import click
 from click.testing import CliRunner
 import pytest
 
-from clickext import log
+from clickext import init_logger, log
 
 
 @pytest.mark.parametrize(
@@ -47,7 +47,7 @@ def test_logger_init(
     capsys: pytest.CaptureFixture,
 ):
     logger = logging.getLogger("logger_init")
-    log.init_logger(logger, redirect_exceptions=False)
+    init_logger(logger, redirect_exceptions=False)
     logger.info("foobar")
     captured = capsys.readouterr()
     assert captured.out == "foobar\n"
@@ -58,7 +58,7 @@ def test_logger_init(
 @pytest.mark.parametrize(["args"], [([],), (["--foo"],)])
 def test_exception_overrides(args: list[str]):
     logger = logging.getLogger("exc_override")
-    log.init_logger(logger)
+    init_logger(logger)
 
     @click.command()
     def cmd():
