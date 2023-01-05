@@ -11,46 +11,69 @@ import click
 
 
 __all__ = [
-    "AliasCommand",
+    "ClickextCommand",
     "AliasAwareGroup",
     "CommonOptionGroup",
     "DebugCommonOptionGroup",
 ]
 
 
+class ClickextCommand(click.Command):
+    """A clickext command.
 
+    Clickext commands support aliases and marking options as mutually exclusive. Mutually exclusive options are
+    validated before invoking the command, and will fail validation when all mutually exclusive options were passed as
+    arguments and one or more options has a value other than its default.
 
-class AliasCommand(click.Command):
-    """A command with one or more aliases.
-
-    Command aliases offer an alternate, typically shorter, command name for a simpler cli interface.
-    Aliased commands must be defined in a `AliasAwareGroup`. Aliases are specified as arguments in the command
-    definition decorator.
-
-    ```
-    import click
-    import clickext
-
-    @click.group(cls=AliasAwareGroup)
-    def cli():
-        ...
-
-    @cli.command(cls=AliasCommand, aliases=['foo'])
-    def foobar():
-        ...
-    ```
-
-    Arguments:
-        aliases: A `list` of `str` aliases for the command.
+    Attributes:
+        aliases: Alternate names that should invoke this command.
+        mx_opts: Groups of options that are mutually exclusive. Each item in the list is a `tuple` of `click.Option`
+                 names that cannot be used together.
     """
 
-    def __init__(self, aliases: list[str], *args, **kwargs):
+    def __init__(
+        self,
+        *args,
+        aliases: t.Optional[list[str]] = None,
+        mx_opts: t.Optional[list[tuple[str]]] = None,
+        **kwargs,
+    ):
+        self.aliases = sorted(aliases) if aliases else []
+        self.mx_opts = mx_opts or []
+
         super().__init__(*args, **kwargs)
-        self.aliases = sorted(aliases)
+
+    def invoke(self, ctx):
+        """Given a context, this invokes the command.
+
+        Mutually exclusive options are validated before invoking the command. Uncaught non-click exceptions
+        (excluding `EOFError`, `KeyboardInterrupt`, and `OSError`) are caught and re-raised as a `click.ClickException`
+        to prevent stack traces and other undesireable output leaking to the console.
+
+        Raises:
+            click.UsageError: When mutually exclusive options have been passed.
+        """
+        for ex_opts in self.mx_opts:
+            passed = []
+
+            for param in self.get_params(ctx):
+                if param.name in ex_opts and param.name in ctx.params and ctx.params[param.name] != param.default:
+                    passed.append(param.opts[0])
+
+                    if len(passed) == len(ex_opts):
+                        raise click.UsageError(f"Mutually exclusive options: {' '.join(passed)}", ctx)
+
+        try:
+            return super().invoke(ctx)
+        except (EOFError, KeyboardInterrupt, OSError, click.Abort, click.ClickException, click.exceptions.Exit):
+            raise
+        except Exception as exc:  # pylint: disable=broad-except
+            raise click.ClickException(str(exc)) from exc
 
     @property
     def name_for_help(self) -> str | None:
-        """Show alias names in command help"""
+        """Get name with aliases (when defined) for command help."""
+
         if self.aliases:
             return f'{self.name} ({",".join(self.aliases)})'
         return self.name
