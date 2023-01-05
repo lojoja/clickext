@@ -1,7 +1,7 @@
 """
-clickext
+clickext.clickext
 
-Extended features for the click library.
+Extended functionality for the click library.
 """
 
 import logging
