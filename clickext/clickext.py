@@ -4,8 +4,7 @@ clickext.clickext
 Extended functionality for the click library.
 """
 
-import logging
-from typing import Any
+import typing as t
 
 import click
 
