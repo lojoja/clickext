@@ -1,7 +1,10 @@
-# pylint: disable=c0114
-from clickext.clickext import (
-    AliasCommand,  # pyright: ignore[reportUnusedImport,reportUnusedVariable]
-    AliasAwareGroup,  # pyright: ignore[reportUnusedImport,reportUnusedVariable]
-    CommonOptionGroup,  # pyright: ignore[reportUnusedImport,reportUnusedVariable]
-    DebugCommonOptionGroup,  # pyright: ignore[reportUnusedImport,reportUnusedVariable]
-)
+"""
+clickext
+
+The clickext public API
+"""
+
+
+from .clickext import ClickextCommand
+
+from .log import init_logger
