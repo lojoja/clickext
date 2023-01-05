@@ -56,3 +56,27 @@ def test_exclusive_options(mx_opts: list[tuple[str]], args: list[str], fail: boo
     else:
         assert result.exit_code == 0
         assert "ok\n" == result.output
+
+
+@pytest.mark.parametrize(
+    ["initial", "expected"],
+    [
+        (EOFError, "\nAborted!\n"),
+        (KeyboardInterrupt, "\nAborted!\n"),
+        (click.ClickException, "Error: foobar\n"),
+        (click.Abort, "Aborted!\n"),
+        (click.exceptions.Exit, "foobar\n"),
+        (RuntimeError, "Error: foobar\n"),
+        (ValueError, "Error: foobar\n"),
+    ],
+    ids=["eof", "kbd", "click exception", "click abort", "click exit", "runtime error", "value error"],
+)
+def test_exceptions_caught(initial: Exception, expected: str):
+    @click.command(cls=ClickextCommand)
+    def cmd():
+        raise initial("foobar")  # type: ignore
+
+    runner = CliRunner()
+    result = runner.invoke(cmd, catch_exceptions=False)
+
+    assert result.output == expected
