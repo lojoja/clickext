@@ -17,14 +17,12 @@ def test_aliases(name: str, aliases: list[str], expected: list[str]):
     assert cmd.aliases == expected
 
 
-@pytest.mark.parametrize(
-    ["name", "aliases", "expected"],
-    [("cmd", [], "cmd"), ("cmd", ["b", "a"], "cmd (a,b)")],
-    ids=["w/ aliases", "w/out aliases"],
-)
-def test_name_for_help(name: str, aliases: list[str], expected: str):
-    cmd = ClickextCommand(name, aliases=aliases)
-    assert cmd.name_for_help == expected
+def test_no_aliases_in_non_subcommand_help():
+    cmd = ClickextCommand("cmd", aliases=["cmdalias", "otheralias"])
+    runner = CliRunner()
+    result = runner.invoke(cmd, ["--help"])
+
+    assert "Aliases:\n  cmdalias\n  otheralias\n" not in result.output
 
 
 @pytest.mark.parametrize(

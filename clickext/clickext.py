@@ -20,9 +20,12 @@ __all__ = [
 class ClickextCommand(click.Command):
     """A clickext command.
 
-    Clickext commands support aliases and marking options as mutually exclusive. Mutually exclusive options are
-    validated before invoking the command, and will fail validation when all mutually exclusive options were passed as
-    arguments and one or more options has a value other than its default.
+    Clickext commands support aliases and marking options as mutually exclusive.
+
+    Aliases have no effect unless the command is a subcommand in a `ClickextGroup`.
+
+    Mutually exclusive options are validated before invoking the command, and will fail validation when all mutually
+    exclusive options were passed as arguments and one or more options has a value other than its default.
 
     Attributes:
         aliases: Alternate names that should invoke this command.
@@ -37,7 +40,7 @@ class ClickextCommand(click.Command):
         mx_opts: t.Optional[list[tuple[str]]] = None,
         **kwargs,
     ):
-        self.aliases = sorted(aliases) if aliases else []
+        self.aliases = sorted(aliases or [])
         self.mx_opts = mx_opts or []
 
         super().__init__(*args, **kwargs)
@@ -69,21 +72,28 @@ class ClickextCommand(click.Command):
         except Exception as exc:  # pylint: disable=broad-except
             raise click.ClickException(str(exc)) from exc
 
-    @property
-    def name_for_help(self) -> str | None:
-        """Get name with aliases (when defined) for command help."""
+    def format_help(self, ctx, formatter):
+        """Writes the help into the formatter if it exists."""
+        super().format_help(ctx, formatter)
+        self.format_aliases(ctx, formatter)
 
         if self.aliases:
             return f'{self.name} ({",".join(self.aliases)})'
         return self.name
 
 
-class AliasAwareGroup(click.Group):
-    """A command group that handles aliased and non-aliased commands.
+    def format_aliases(self, ctx: click.Context, formatter: click.HelpFormatter):  # pylint: disable=unused-argument
+        """Add aliases to the program help display when command is a subcommand."""
+        if ctx.parent:
+            aliases = []
 
-    ```
-    import click
-    import clickext
+            if self.aliases:
+                for alias in self.aliases:
+                    aliases.append((alias, ""))
+
+            if aliases:
+                with formatter.section("Aliases"):
+                    formatter.write_dl(aliases)
 
     @click.group(cls=AliasAwareGroup)
     def cli():
