@@ -17,7 +17,7 @@ def patch_exceptions(logger: logging.Logger) -> None:
     complete control of the console output verbosity statically or dynamically at runtime with the `clickext.verbose`
     and `clickext.verbosity` decorators.
 
-    This function is called automatically by `clickext.log.init_logging`.
+    This function is called automatically by `clickext.init_logging`.
 
     Arguments:
         logger: The logger that should click exceptions should be routed to.
