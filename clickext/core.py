@@ -1,5 +1,5 @@
 """
-clickext.clickext
+clickext.core
 
 Extended functionality for the click library.
 """

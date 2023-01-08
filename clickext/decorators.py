@@ -9,7 +9,7 @@ import typing as t
 
 import click
 
-from .clickext import ClickextCommand
+from .core import ClickextCommand
 
 
 def verbose_option(
