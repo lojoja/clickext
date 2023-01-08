@@ -1,13 +1,18 @@
 """
 clickext.log
 
-Console log output handling for click programs.
+Logging and console output handling for clickext programs.
 """
 
 import logging
-import typing as t
 
 import click
+
+from .exceptions import patch_exceptions
+
+
+QUIET_LEVEL_NAME = "QUIET"
+QUIET_LEVEL_NUM = 1000
 
 
 class ColorFormatter(logging.Formatter):
@@ -39,14 +44,14 @@ class ColorFormatter(logging.Formatter):
 
             return msg
 
-        return logging.Formatter.format(self, record)
+        return logging.Formatter.format(self, record)  # pragma: no cover
 
 
 class ConsoleHandler(logging.Handler):
     """Handle click console messages.
 
     Attributes:
-        stderr_levels: Log levels that should write to stderr.
+        stderr_levels: Log levels that should write to stderr instead of stdout.
     """
 
     stderr_levels = ["critical", "error", "exceptions", "warning"]
@@ -55,42 +60,35 @@ class ConsoleHandler(logging.Handler):
         try:
             msg = self.format(record)
             use_stderr = record.levelname.lower() in self.stderr_levels
-            click.echo(msg, err=use_stderr, color=True)
+            click.echo(msg, err=use_stderr)
         except Exception:  # pylint: disable=broad-except
             self.handleError(record)
 
 
-def init_logger(logger: logging.Logger, redirect_exceptions: bool = True, level: int = logging.INFO) -> logging.Logger:
-    """Configure logger for console output.
+def init_logging(logger: logging.Logger, level: int = logging.INFO) -> logging.Logger:
+    """Initialize program logging.
+
+    Configures the given logger for console output, with `ConsoleHandler` and `ColorFormatter`. `click.ClickException`
+    and children are patched to send errors messages to the logger instead of printing to the console directly. If this
+    function is not called `click.ClickException` error messages cannot be suppressed by changing the logger level.
+
+    An additional log level is added during initialization and assigned to `logging.QUIET`. This level can be used to
+    supress all console output.
 
     Arguments:
         logger: The logger to configure.
-        redirect_exceptions: Whether raised `click.ClickException`s messages should be handled by the logger.
-        level: The default log level to emit (default: `logging.INFO`).
+        level: The default log level to print (default: `logging.INFO`).
     """
+    if not hasattr(logging, QUIET_LEVEL_NAME):
+        logging.addLevelName(QUIET_LEVEL_NUM, QUIET_LEVEL_NAME)
+        setattr(logging, QUIET_LEVEL_NAME, QUIET_LEVEL_NUM)
 
     handler = ConsoleHandler()
     handler.setFormatter(ColorFormatter())
 
-    logger.addHandler(handler)
+    logger.handlers = [handler]
     logger.setLevel(level)
 
-    def error(self: click.ClickException, file: t.Optional[t.IO] = None) -> None:  # pylint: disable=unused-argument
-        logger.error(self.format_message())
-
-    def usage_error(self: click.UsageError, file: t.Optional[t.IO] = None) -> None:  # pylint: disable=unused-argument
-        hint = ""
-
-        if self.ctx is not None and self.ctx.command.get_help_option(self.ctx) is not None:
-            hint = f"Try '{self.ctx.command_path} {self.ctx.help_option_names[0]}' for help.\n"
-
-        if self.ctx is not None:
-            click.echo(f"{self.ctx.get_usage()}\n{hint}")
-
-        logger.error(self.format_message())
-
-    if redirect_exceptions:
-        click.ClickException.show = error
-        click.UsageError.show = usage_error
+    patch_exceptions(logger)
 
     return logger
