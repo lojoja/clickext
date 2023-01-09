@@ -29,7 +29,8 @@ class ClickextCommand(click.Command):
         aliases: Alternate names that should invoke this command.
         mx_opts: Groups of options that are mutually exclusive. Each item in the list is a `tuple` of `click.Option`
                  names that cannot be used together.
-        group_opts: Internal storage of global group options that are not parsed with the command arguments.
+        global_opts: Internal storage of global group options that are not parsed with the command arguments. This value
+                     will be set by the group when the command is registered.
     """
 
     def __init__(
@@ -41,119 +42,9 @@ class ClickextCommand(click.Command):
     ):
         self.aliases = sorted(aliases or [])
         self.mx_opts = mx_opts or []
-        self.group_opts: list[click.Option] = []
+        self.global_opts: dict[str, click.Option] = {}
 
         super().__init__(*args, **kwargs)
-
-    def invoke(self, ctx):
-        """Given a context, this invokes the command.
-
-        Mutually exclusive options are validated before invoking the command. Uncaught non-click exceptions
-        (excluding `EOFError`, `KeyboardInterrupt`, and `OSError`) are caught and re-raised as a `click.ClickException`
-        to prevent stack traces and other undesireable output leaking to the console.
-
-        Raises:
-            click.clickException: When an uncaught exception occurs during invocation.
-            click.UsageError: When mutually exclusive options have been passed.
-        """
-        for ex_opts in self.mx_opts:
-            passed = []
-
-            for param in self.get_params(ctx):
-                if param.name in ex_opts and param.name in ctx.params and ctx.params[param.name] != param.default:
-                    passed.append(param.opts[0])
-
-                    if len(passed) == len(ex_opts):
-                        raise click.UsageError(f"Mutually exclusive options: {' '.join(passed)}", ctx)
-
-        try:
-            return super().invoke(ctx)
-        except (EOFError, KeyboardInterrupt, OSError, click.Abort, click.ClickException, click.exceptions.Exit):
-            raise
-        except Exception as exc:  # pylint: disable=broad-except
-            raise click.ClickException(str(exc)) from exc
-
-    def format_help(self, ctx, formatter):
-        """Writes the help into the formatter if it exists."""
-        super().format_help(ctx, formatter)
-        self.format_aliases(ctx, formatter)
-
-    def format_options(self, ctx, formatter):
-        """Add options to the program help display.
-
-        Options are sorted alphabetically by the first CLI option string. If this command is part of a `ClickextGroup`
-        global group options are included in the option display.
-        """
-        params = [*self.get_params(ctx), *self.group_opts]
-        params.sort(key=lambda x: x.opts[0])
-
-        opts = []
-
-        for param in params:
-            record = param.get_help_record(ctx)
-            if record is not None:
-                opts.append(record)
-
-        if opts:
-            with formatter.section("Options"):
-                formatter.write_dl(opts)
-
-    def format_aliases(self, ctx: click.Context, formatter: click.HelpFormatter):  # pylint: disable=unused-argument
-        """Add aliases to the program help display when command is a subcommand."""
-        if ctx.parent:
-            aliases = []
-
-            if self.aliases:
-                for alias in self.aliases:
-                    aliases.append((alias, ""))
-
-            if aliases:
-                with formatter.section("Aliases"):
-                    formatter.write_dl(aliases)
-
-
-class ClickextGroup(click.Group):
-    """A clickext command group.
-
-    Clickext command groups require `ClickextCommand` command instances, and support aliases and global options.
-
-    Global options are options defined at the group level that may be passed as arguments to the group command
-    and all subcommands in the group. Typically these options are used to change configuration or execution globally
-    (e.g., to set verbosity level). Global options are extracted and prepended to the arguments prior to argument
-    parsing; they are not passed to subcommands and must not be part of a subcommand function signature.
-
-    Global option names cannot be the same as a subcommand name, subcommand option name, or share long/short option
-    strings with a subcommand option. Additionally, non-flag global options should not accept values that begin with "-"
-    or values identical to a subcommand name.
-
-    Attributes:
-        global_opts: A `list` of group option names that can be passed to any command in the group.
-
-    Raises:
-        ValueError: When a named global option does not exist.
-        TypeError: When a named global option is not a `click.Option`.
-    """
-
-    def __init__(
-        self,
-        *args,
-        global_opts: t.Optional[list[str]] = None,
-        **kwargs,
-    ):
-        super().__init__(*args, **kwargs)
-
-        global_opts = global_opts or []
-
-        for name in global_opts:
-            param = next((p for p in self.params if p.name == name), None)
-
-            if not param:
-                raise ValueError(f"Unknown global option {name}")
-
-            if not isinstance(param, click.Option):
-                raise TypeError(f"Invalid global option {name}; global options must be a 'click.Option'")
-
-        self.global_opts = global_opts
 
     def invoke(self, ctx):
         """Given a context, this invokes the command.
@@ -175,7 +66,154 @@ class ClickextGroup(click.Group):
     def parse_args(self, ctx, args):
         """Parse arguments and update the context.
 
+        Mutually exclusive options are validated after parsing because the resolved values are required to determine
+        which were options passed and which are using default values.
+        """
+        args = super().parse_args(ctx, args)
+        self.validate_mutually_exclusive_options(ctx)
+        return args
+
+    def validate_mutually_exclusive_options(self, ctx: click.Context) -> None:
+        """Ensure mutually exclusive options have not been passed as arguments.
+
+        Validation must be done after the arguments are parsed so only the options relevant to the command are
+        considered and the resolved values can be compared to the default value for each option.
+
+        Raises:
+            click.UsageError: When mutually exclusive options have been passed.
+        """
+        for mx_opts in self.mx_opts:
+            passed = []
+
+            for param in self.get_params(ctx):
+                if param.name in mx_opts and param.name in ctx.params and ctx.params[param.name] != param.default:
+                    passed.append(param.opts[0])
+
+                    if len(passed) == len(mx_opts):
+                        raise click.UsageError(f"Mutually exclusive options: {' '.join(passed)}", ctx)
+
+    def list_global_options(self) -> list[click.Option]:
+        """Get a list of global options registered with the command."""
+        return list(self.global_opts.values())
+
+    def format_help(self, ctx, formatter):
+        """Writes the help into the formatter if it exists."""
+        super().format_help(ctx, formatter)
+        self.format_aliases(ctx, formatter)
+
+    def format_options(self, ctx, formatter):
+        """Add options to the program help display.
+
+        Options are sorted alphabetically by the first CLI option string. If the command is part of a `ClickextGroup`
+        global group options are included in the option display.
+        """
+        params = self.get_params(ctx)
+
+        if ctx.parent and not isinstance(self, ClickextGroup):
+            params.extend(self.list_global_options())
+
+        params.sort(key=lambda x: x.opts[0])
+
+        opts = []
+
+        for param in params:
+            record = param.get_help_record(ctx)
+            if record is not None:
+                opts.append(record)
+
+        if opts:
+            with formatter.section("Options"):
+                formatter.write_dl(opts)
+
+    def format_aliases(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
+        """Add aliases to the program help display when command is a subcommand."""
+        if ctx.parent and not isinstance(self, ClickextGroup):
+            aliases = []
+
+            for alias in self.aliases:
+                aliases.append((alias, ""))
+
+            if aliases:
+                with formatter.section("Aliases"):
+                    formatter.write_dl(aliases)
+
+
+class ClickextGroup(ClickextCommand, click.Group):
+    """A clickext command group.
+
+    Clickext command groups require `ClickextCommand` command instances, and support aliases and global options.
+
+    Global options are options defined at the group level that may be passed as arguments to the group command
+    and all subcommands in the group. Typically these options are used to change configuration or execution globally
+    (e.g., to set verbosity level). Global options are extracted and prepended to the arguments prior to argument
+    parsing; they are not passed to subcommands and must not be part of a subcommand function signature.
+
+    Global option names cannot be the same as a subcommand name, subcommand option name, or share long/short option
+    strings with a subcommand option. Additionally, non-flag global options should not accept values that begin with "-"
+    or values identical to a subcommand name.
+
+    Arguments:
+        global_opts: A list of group option names.
+
+    Attributes:
+        global_opts: A `list` of `click.Option`s that can be passed to any command in the group.
+    """
+
+    def __init__(
+        self,
+        *args,
+        global_opts: t.Optional[list[str]] = None,
+        **kwargs,
+    ):
+        # These should not be set for a command group
+        kwargs["aliases"] = None
+        kwargs["mx_opts"] = None
+
+        super().__init__(*args, **kwargs)
+
+        self.global_opts = self.get_global_options(global_opts)
+
+    def get_global_options(self, names: t.Optional[list[str]] = None) -> dict[str, click.Option]:
+        """Find and validate global options for the group.
+
+        Arguments:
+            names: A list of option names to make global.
+
+        Raises:
+            ValueError: When an option with the given name does not exist.
+            TypeError: When a parameter is not a `click.Option`.
+        """
+        names = names or []
+        options: dict[str, click.Option] = {}
+
+        for name in names:
+            param = next((p for p in self.params if p.name == name), None)
+
+            if not param:
+                raise ValueError(f"Unknown global option {name}")
+
+            if not isinstance(param, click.Option):
+                raise TypeError(f"Invalid global option {name}; global options must be a 'click.Option'")
+
+            options[name] = param
+
+        return options
+
+    def parse_args(self, ctx, args):
+        """Parse arguments and update the context.
+
         Global options are extracted and prepended to the argument list before parsing.
+        """
+        args = self.parse_global_args(args)
+        return super().parse_args(ctx, args)
+
+    def parse_global_args(self, args: list[str]) -> list[str]:
+        """Parse global arguments and update the argument order.
+
+        Global options are extracted from the raw arguments and prepended to raw arguments to be consumed by the group.
+
+        Arguments:
+            args: A list of arguments passed to the program.
         """
         grp_args: list[str] = []
         cmd_args: list[str] = []
@@ -186,7 +224,7 @@ class ClickextGroup(click.Group):
             if idx != next_idx:
                 continue
 
-            gopt = next((go for go in self.get_global_options() if arg in go.opts), None)
+            gopt = next((go for go in self.list_global_options() if arg in go.opts), None)
 
             if gopt:
                 grp_args.append(arg)
@@ -201,23 +239,15 @@ class ClickextGroup(click.Group):
 
             next_idx += 1
 
-        args = [*grp_args, *cmd_args]
-        return super().parse_args(ctx, args)
-
-    def get_global_options(self) -> list[click.Option]:
-        """Get the global group option parameters."""
-        return [param for param in self.params if param.name in self.global_opts]  #  type:ignore
+        return [*grp_args, *cmd_args]
 
     def add_command(self, cmd: ClickextCommand, name=None):
         """Register a command with this group.
 
-        Command and command options are validated against global options before registration. Global options are stored
-        separately on the command to use in the program help display.
+        Global options are stored separately on the command to use in the program help display.
 
         Raises:
             TypeError: When a command that is not a `ClickextCommand` is added to the group.
-            ValueError: When the command name is the same as a global option name; a command option has the same name as
-                        a global option, or a command option has the same long/short option string as a global option.
         """
         if not isinstance(cmd, ClickextCommand):
             raise TypeError("Only 'ClickextCommand's can be registered with a 'ClickextGroup'")
@@ -225,18 +255,8 @@ class ClickextGroup(click.Group):
         name = name or cmd.name
 
         if name is not None:
-            if name in self.global_opts:
-                raise ValueError(f"Subcommand {name} conflicts with a global option name")
-
-            for param in cmd.params:
-                if param.name in self.global_opts:
-                    raise ValueError(f"Subcommand option {param.name} conflicts with a global option name")
-
-                for opt in param.opts:
-                    if any(opt in gopt.opts for gopt in self.get_global_options()):
-                        raise ValueError(f"Subcommand option string {opt} conflicts with a global option string")
-
-            cmd.group_opts = self.get_global_options()
+            self.validate_command(cmd, name)
+            cmd.global_opts = self.global_opts
 
         super().add_command(cmd, name)
 
@@ -248,6 +268,24 @@ class ClickextGroup(click.Group):
                 break
 
         return super().get_command(ctx, cmd_name)
+
+    def validate_command(self, cmd: ClickextCommand, name: str) -> None:
+        """Validate a command and its options.
+
+        Raises:
+            ValueError: When the command name is the same as a global option name; a command option has the same name as
+                        a global option, or a command option has the same long/short option string as a global option.
+        """
+        if name in self.global_opts:
+            raise ValueError(f"Subcommand {name} conflicts with a global option name")
+
+        for param in cmd.params:
+            if param.name in self.global_opts:
+                raise ValueError(f"Subcommand option {param.name} conflicts with a global option name")
+
+            for opt in param.opts:
+                if any(opt in gopt.opts for gopt in self.list_global_options()):
+                    raise ValueError(f"Subcommand option string {opt} conflicts with a global option string")
 
     def format_commands(self, ctx, formatter):
         """Add subcommands to the program help display."""
@@ -281,22 +319,9 @@ class ClickextGroup(click.Group):
                     formatter.write_dl(rows)
 
     def format_options(self, ctx, formatter):
-        """Add options to the program help display.
+        """Add options and commands to the program help display.
 
         Options are sorted alphabetically by the first CLI option string.
         """
-        params = self.get_params(ctx)
-        params.sort(key=lambda x: x.opts[0])
-
-        opts = []
-
-        for param in params:
-            record = param.get_help_record(ctx)
-            if record is not None:
-                opts.append(record)
-
-        if opts:
-            with formatter.section("Options"):
-                formatter.write_dl(opts)
-
+        super().format_options(ctx, formatter)
         self.format_commands(ctx, formatter)
