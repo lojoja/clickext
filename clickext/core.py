@@ -127,7 +127,7 @@ class ClickextCommand(click.Command):
 
     def format_aliases(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
         """Add aliases to the program help display when command is a subcommand."""
-        if ctx.parent and not isinstance(self, ClickextGroup):
+        if ctx.parent:
             aliases = []
 
             for alias in self.aliases:
@@ -150,7 +150,8 @@ class ClickextGroup(ClickextCommand, click.Group):
 
     Global option names cannot be the same as a subcommand name, subcommand option name, or share long/short option
     strings with a subcommand option. Additionally, non-flag global options should not accept values that begin with "-"
-    or values identical to a subcommand name.
+    or values identical to a subcommand name. Global options can be mutually exclusive with other group-level options,
+    but not with subcommand options.
 
     Arguments:
         global_opts: A list of group option names.
@@ -165,10 +166,6 @@ class ClickextGroup(ClickextCommand, click.Group):
         global_opts: t.Optional[list[str]] = None,
         **kwargs,
     ):
-        # These should not be set for a command group
-        kwargs["aliases"] = None
-        kwargs["mx_opts"] = None
-
         super().__init__(*args, **kwargs)
 
         self.global_opts = self.get_global_options(global_opts)
