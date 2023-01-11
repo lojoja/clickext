@@ -114,6 +114,40 @@ def test_global_option_validation(global_opts: list[str], exception: Exception, 
 
 
 @pytest.mark.parametrize(
+    ["shared_params", "expected_output"],
+    [
+        (["foo", "abc"], "Unknown shared parameter abc"),
+        (["foo", "bar"], "Subcommand option bar conflicts with a shared parameter name"),
+        (["foo", "bat"], "Subcommand argument bat conflicts with a shared parameter name"),
+        (["foo", "baz"], "Subcommand option string --baz conflicts with a shared option string"),
+    ],
+    ids=[
+        "undefined",
+        "same as subcommand name",
+        "same as subcommand option",
+        "same as subcommand option string",
+    ],
+)
+def test_shared_parameter_validation(shared_params: list[str], expected_output: str):
+    with pytest.raises(ValueError, match=expected_output):
+
+        @click.group(cls=ClickextGroup, shared_params=shared_params)
+        @click.option("--foo", is_flag=True)
+        @click.option("--bar", is_flag=True)
+        @click.option("--baz", is_flag=True)
+        @click.argument("bat", nargs=1)
+        def cli(foo, bar, baz, cmd, bat):  # pylint: disable=disallowed-name,unused-argument
+            pass
+
+        @cli.command(cls=ClickextCommand)
+        @click.option("--bar", is_flag=True)
+        @click.option("--baz", "xyz", is_flag=True)
+        @click.argument("bat", nargs=1)
+        def cmd(foo, bar, xyz, bat):  # pylint: disable=disallowed-name,unused-argument
+            pass
+
+
+@pytest.mark.parametrize(
     ["initial", "expected"],
     [
         (EOFError, "\nAborted!\n"),

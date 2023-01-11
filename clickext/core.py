@@ -29,8 +29,8 @@ class ClickextCommand(click.Command):
         aliases: Alternate names that should invoke this command.
         mx_opts: Groups of options that are mutually exclusive. Each item in the list is a `tuple` of `click.Option`
                  names that cannot be used together.
-        global_opts: Internal storage of global group options that are not parsed with the command arguments. This value
-                     will be set by the group when the command is registered.
+        global_opts: A `list` of `click.Option`s that can be passed to any command in the group. This value will be set
+                     when the command is part of a `ClickextGroup` when the command is registered.
     """
 
     def __init__(
@@ -153,24 +153,34 @@ class ClickextGroup(ClickextCommand, click.Group):
     or values identical to a subcommand name. Global options can be mutually exclusive with other group-level options,
     but not with subcommand options.
 
+    Shared parameters are parameters defined at the group level that are attached to all subcommands in the group. These
+    parameters cannot be passed to the group itself. Shared parameter names cannot be the same as a subcommand parameter
+    name or share long/short option strings with a subcommand option. Shared parameters cannot be mutually exclusive
+    with global options, but can be mutually exclusive with non-shared subcommand parameters.
+
     Arguments:
         global_opts: A list of group option names.
+        shared_params: A list of subcommand option names.
 
     Attributes:
         global_opts: A `list` of `click.Option`s that can be passed to any command in the group.
+        shared_params: A `list` of `click.Option`s that should be attached to all subcommands in the group. These
+                       options are defined on the group but only added to subcommands in the group.
     """
 
     def __init__(
         self,
         *args,
         global_opts: t.Optional[list[str]] = None,
+        shared_params: t.Optional[list[str]] = None,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
 
-        self.global_opts = self.get_global_options(global_opts)
+        self.global_opts: dict[str, click.Option] = self.init_global_options(global_opts)
+        self.shared_params: dict[str, click.Parameter] = self.init_shared_params(shared_params)
 
-    def get_global_options(self, names: t.Optional[list[str]] = None) -> dict[str, click.Option]:
+    def init_global_options(self, names: t.Optional[list[str]] = None) -> dict[str, click.Option]:
         """Find and validate global options for the group.
 
         Arguments:
@@ -195,6 +205,31 @@ class ClickextGroup(ClickextCommand, click.Group):
             options[name] = param
 
         return options
+
+    def init_shared_params(self, names: t.Optional[list[str]] = None) -> dict[str, click.Parameter]:
+        """Find, extract, and validate shared subcommand parameters from the group parameters.
+
+        Arguments:
+            names: A list of parameter names to share with all subcommands.
+
+        Raises:
+            ValueError: When a parameter with the given name does not exist.
+        """
+        names = names or []
+        params: dict[str, click.Parameter] = {}
+
+        for name in names:
+            param = next((p for p in self.params if p.name == name), None)
+
+            if not param:
+                raise ValueError(f"Unknown shared parameter {name}")
+
+            params[name] = param
+
+        # subcommand parameters cannot be passed to the group
+        self.params[:] = [p for p in self.params if p.name not in names]
+
+        return params
 
     def parse_args(self, ctx, args):
         """Parse arguments and update the context.
@@ -254,6 +289,7 @@ class ClickextGroup(ClickextCommand, click.Group):
         if name is not None:
             self.validate_command(cmd, name)
             cmd.global_opts = self.global_opts
+            cmd.params.extend(self.list_shared_parameters())
 
         super().add_command(cmd, name)
 
@@ -267,11 +303,11 @@ class ClickextGroup(ClickextCommand, click.Group):
         return super().get_command(ctx, cmd_name)
 
     def validate_command(self, cmd: ClickextCommand, name: str) -> None:
-        """Validate a command and its options.
+        """Validate global options and shared parameters for a command.
 
         Raises:
-            ValueError: When the command name is the same as a global option name; a command option has the same name as
-                        a global option, or a command option has the same long/short option string as a global option.
+            ValueError: When the command name is the same as a global option name, or a command parameter conflicts with
+                        a global option or shared parameter name or option string.
         """
         if name in self.global_opts:
             raise ValueError(f"Subcommand {name} conflicts with a global option name")
@@ -280,9 +316,21 @@ class ClickextGroup(ClickextCommand, click.Group):
             if param.name in self.global_opts:
                 raise ValueError(f"Subcommand option {param.name} conflicts with a global option name")
 
+            if param.name in self.shared_params:
+                raise ValueError(
+                    f"Subcommand {param.param_type_name} {param.name} conflicts with a shared parameter name"
+                )
+
             for opt in param.opts:
                 if any(opt in gopt.opts for gopt in self.list_global_options()):
                     raise ValueError(f"Subcommand option string {opt} conflicts with a global option string")
+
+                if any(opt in sopt.opts for sopt in self.list_shared_parameters()):
+                    raise ValueError(f"Subcommand option string {opt} conflicts with a shared option string")
+
+    def list_shared_parameters(self) -> list[click.Parameter]:
+        """Get a list of parameters shared with all subcommands."""
+        return list(self.shared_params.values())
 
     def format_commands(self, ctx, formatter):
         """Add subcommands to the program help display."""
