@@ -1,6 +1,6 @@
 # clickext
 
-Extended features for the Python click library. Includes global logging configuration for pretty console output, command groups with shared options, and commands with aliases.
+Extended features for the Python click library. Includes global logging configuration and error handling for pretty console output, aliased commands, command groups with global and shared subcommand options, mutually exclusive options, verbosity level options, and a configuration file option.
 
 
 ## Requirements
@@ -25,118 +25,123 @@ pip install git+ssh://github.com/lojoja/clickext@main
 
 ## Usage
 
-### Logging
+### Logging and Error Messages
 
-Logging is automatically configured when the clickext library is imported. The logging configuration formats messages and click exceptions, and colors the console output. To change the log output level, set the level of the root logger.
+Logging wraps the `click.echo` and patches `click.ClickException` and `click.UsageError` to emit console-aware colored messages at different log levels. The log level determines which messages are printed to the console. A `QUIET` log level is defined to suppress all output from the program itself, though messages generated outside the program may still print. The default log level is `logging.INFO`.
+
+```
+import logging
+import clickext
+
+logger = logging.getLogger("my_logger")
+clickext.init_logging(logger)
+```
 
 ### Commands with aliases
 
-Command aliases provide alternate names for a single command. Helpful for commands with long names or to shorten commands with many options/arguments. Aliased commands must be in a `clickext.AliasAwareGroup` command group. This group accepts aliased and unaliased commands.
+Command aliases provide alternate names for a single command. Helpful for commands with long names or to shorten commands with many options/arguments. Aliased commands must be in a `clickext.ClickextGroup` command group.
 
-Define commands:
-
-```
-import click
-import clickext
-
-@click.group(cls=clickext.AliasAwareGroup)
-def cli():
-    pass
-
-@cli.command(cls=clickext.AliasCommand, aliases=["a"])
-def aliased():
-    click.echo("aliased or a")
-
-@cli.command():
-def unaliased():
-    click.echo("only unaliased")
-```
-
-Call commands:
-
-```
-> cli aliased
-aliased or a
-> cli a
-aliased or a
-> cli unaliased
-only unaliased
-```
-
-### Commands with common options
-
-Common options provide a way to configure and parse global options that can appear after any subcommand in the group.
-
-Define commands:
+Define command:
 
 ```
 import click
 import clickext
 
-@click.group(cls=clickext.CommonOptionGroup, common_options=[
-    click.Option(["--excited"], is_flag=True, default=False)
-])
+@click.group(cls=clickext.ClickextGroup)
 def cli():
     pass
 
-@cli.command()
-def hello(excited):
-    punctuation = '!' if excited else '.'
-    click.echo(f"Hello{punctuation}")
-
-@cli.command()
-def hi(excited):
-    punctuation = '!' if excited else '.'
-    click.echo(f"Hi{punctuation}")
+@cli.command(cls=clickext.ClickextCommand, aliases=["c"])
+def cmd():
+    pass
 ```
 
-Call commands:
+### Mutually exclusive options
+
+Mutually exclusive options prevent two or more options being passed together. Shared and command-specific options can be mutually exclusive. Command group global options can be mutually exclusive with other group options, but not with shared or subcommand options.
 
 ```
-> cli hello
-Hello.
-> cli hello --excited
-Hello!
-> cli hi
-Hi.
-> cli hi --excited
-Hi!
+import click
+import clickext
+
+@click.command(cls=clickext.ClickextCommand, mx_opts=[("foo", "bar")])
+@click.option("--foo", is_flag=True)
+@click.option("--bar", is_flag=True)
+def cmd(foo, bar):
+    pass
 ```
 
-### Command with shared options, debug option
+### Shared Parameters
 
-Adds a `--debug` flag option to all commands in the command group for more verbose console output. Optionally, additional shared options can be defined.
+Shared parameters are parameters defined at the group level that are added to all subcommands in the group, but not to the group itself.
 
-Define commands:
+```
+import click
+import clickext
+
+@click.group(cls=clickext.ClickextGroup, shared_params=["foo", "bar"])
+@click.option("--foo", is_flag=True)
+@click.option("--bar", is_flag=True)
+def cli():
+    pass
+
+@cli.command(cls=clickext.ClickextCommand)
+def cmd(foo, bar):
+    pass
+```
+
+### Group Global Options
+
+Global options are group-level options that can be passed to any subcommand in the group. These options are extracted from the passed arguments before parsing and processed at the group level regardless of where they originally appeared. Global options cannot have the same name as a subcommand or subcommand option; options that accept values should not accept values with the same name as a subcommand.
+
+```
+import click
+import clickext
+
+@click.group(cls=clickext.ClickextGroup, global_opts=["foo", "bar"])
+@click.option("--foo", is_flag=True)
+@click.option("--bar", is_flag=True)
+def cli(foo, bar):
+    pass
+
+@cli.command(cls=clickext.ClickextCommand)
+def cmd():
+    pass
+```
+
+### Config Option
+
+The `config_option` provides a mechanism for loading configuration from a JSON, TOML, or YAML file and storing it on `ctx.obj`. An optional `processor` can be provided to handle the raw parsed data.
+
+```
+import click
+import clickext
+
+def config_processor(data):
+    pass
+
+@click.command(cls=clickext.Command)
+@config_option('/usr/local/etc/config.json', processor=config_processor)
+@click.pass_obj
+def cmd(obj)
+    pass
+```
+
+### Verbose and Verbosity Options
+
+The `verbose_option` provides a simple verbosity toggle between the `logging.DEBUG` and default log level output. The `verbosity_option` provides a configurable verbosity level that can be sent to any log level by passing that level name as the argument. The clickext custom level `QUIET` can also be set.
 
 ```
 import logging
 import click
 import clickext
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__package__)
 
-@click.group(cls=clickext.DebugCommonOptionGroup, common_options=[
-    click.Option(["--excited"], is_flag=True, default=False)
-])
-def cli():
-  pass
-
-@cli.command()
-def hello(excited, debug):
-    punctuation = '!' if excited else '.'
-    logger.debug('Debug is enabled')
-    click.echo(f"Hello{punctuation}")
-```
-
-Call commands:
-
-```
-> cli hello
-Hello.
-> cli hello --debug
-Debug: Debug is enabled
-Hello.
+@click.command(cls=clickext.ClickextCommand)
+@verbose_option(logger)
+def cmd():
+    pass
 ```
 
 ## License
