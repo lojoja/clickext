@@ -113,6 +113,7 @@ def config_option(
     kwargs["default"] = str(file)
     kwargs["is_eager"] = False
     kwargs["callback"] = callback
+    kwargs["required"] = False
 
     return click.option(*param_decls, **kwargs)
 
