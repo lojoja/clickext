@@ -5,6 +5,7 @@ Logging and console output handling for clickext programs.
 """
 
 import logging
+import typing as t
 
 import click
 
@@ -25,7 +26,7 @@ class ColorFormatter(logging.Formatter):
         styles: A mapping of log levels to display styles.
     """
 
-    styles = {
+    styles: dict[str, t.Any] = {
         "critical": dict(fg="red"),
         "debug": dict(fg="blue"),
         "error": dict(fg="red"),
