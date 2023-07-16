@@ -1,0 +1,29 @@
+name: Publish
+
+on:
+  release: [published]
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download release assets
+        uses: dsaltares/fetch-gh-release-asset@a40c8b4a0471f9ab81bdf73a010f74cc51476ad4
+        with:
+          version: ${{ github.event.release.id }}
+          regex: true
+          file: clickext-.+\\.(tar\\.gz|whl)
+          target: assets/
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish on TestPyPi
+        uses: pypa/gh-action-pypi-publish@f8c70e705ffc13c3b4d1221169b84f12a75d6ca8
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: assets/
+      - name: Publish on PyPi
+        uses: pypa/gh-action-pypi-publish@f8c70e705ffc13c3b4d1221169b84f12a75d6ca8
+        with:
+          packages-dir: assets/

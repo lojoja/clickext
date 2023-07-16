@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+a[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+b[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+rc[0-9]+'
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
+      - name: Install poetry
+        run: pipx install poetry
+      - name: Set up python
+        uses: actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1
+        with:
+          python-version: 3.10
+          cache: poetry
+      - name: Build with poetry
+        run: poetry build
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+        with:
+          path: ./dist
+  create-draft-release:
+    name: Create draft release
+    runs-on: ubuntu-latest
+    needs: [build]
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
+      - name: Identify prerelease
+        id: identify-prerelease
+        run: |
+          flag=""
+          if [[ ! ${{ github.ref_name }} =~ ^refs/tags/[0-9]+.[0-9]+.[0-9]+$ ]]
+          then
+            flag=" --prerelease"
+          fi
+          echo "PRERELEASE=$flag" >> $GITHUB_OUTPUT
+      - name: Create draft release
+        run: >
+          gh release create --draft${{ steps.identify-prerelease.outputs.PRERELEASE }}
+          --repo ${{ github.repository }}
+          ${{ github.ref_name }}
+          artifact/*
+        env:
+          GH_TOKEN: ${{ github.token }}
