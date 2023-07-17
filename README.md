@@ -1,26 +1,18 @@
 # clickext
 
-Extended features for the Python click library. Includes global logging configuration and error handling for pretty console output, aliased commands, command groups with global and shared subcommand options, mutually exclusive options, verbosity level options, and a configuration file option.
+Extended features for the Python [click](https://github.com/pallets/click) library. Includes global logging configuration and error handling for pretty console output, aliased commands, command groups with global and shared subcommand options, mutually exclusive options, verbosity level options, and a configuration file option.
 
 
 ## Requirements
 
-* Python 3.10.x
+* Python 3.10.x, 3.11.x
 * click 8.x.x
 
 
 ## Installation
 
-### Local
-
 ```
-pip install --trusted-host=gitea.lojoja.com --extra-index-url=https://gitea.lojoja.com/api/packages/lojoja/pypi/simple clickext
-```
-
-### Remote
-
-```
-pip install git+ssh://github.com/lojoja/clickext@main
+pip install clickext
 ```
 
 ## Usage
@@ -40,8 +32,6 @@ clickext.init_logging(logger)
 ### Commands with aliases
 
 Command aliases provide alternate names for a single command. Helpful for commands with long names or to shorten commands with many options/arguments. Aliased commands must be in a `clickext.ClickextGroup` command group.
-
-Define command:
 
 ```
 import click
@@ -129,7 +119,7 @@ def cmd(obj)
 
 ### Verbose and Verbosity Options
 
-The `verbose_option` provides a simple verbosity toggle between the `logging.DEBUG` and default log level output. The `verbosity_option` provides a configurable verbosity level that can be sent to any log level by passing that level name as the argument. The clickext custom level `QUIET` can also be set.
+The `verbose_option` provides a simple verbosity toggle between the `logging.DEBUG` and default log level output. The `verbosity_option` provides a configurable verbosity level that can be set to any log level by passing that level name as the argument. The clickext custom level `QUIET` can also be set.
 
 ```
 import logging
