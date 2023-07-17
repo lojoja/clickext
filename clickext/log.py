@@ -27,11 +27,11 @@ class ColorFormatter(logging.Formatter):
     """
 
     styles: dict[str, t.Any] = {
-        "critical": dict(fg="red"),
-        "debug": dict(fg="blue"),
-        "error": dict(fg="red"),
-        "exception": dict(fg="red"),
-        "warning": dict(fg="yellow"),
+        "critical": {"fg": "red"},
+        "debug": {"fg": "blue"},
+        "error": {"fg": "red"},
+        "exception": {"fg": "red"},
+        "warning": {"fg": "yellow"},
     }
 
     def format(self, record):
