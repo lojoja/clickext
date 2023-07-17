@@ -4,6 +4,3 @@ updates:
     directory: /
     schedule:
       interval: monthly
-      day: sunday
-      time: 17:00
-      timezone: UTC
