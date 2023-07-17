@@ -70,7 +70,6 @@ def config_option(
     def callback(
         ctx: click.Context, param: click.Parameter, value: pathlib.Path | str  # pylint: disable=unused-argument
     ) -> None:
-
         if isinstance(value, str):
             value = pathlib.Path(value)
 
