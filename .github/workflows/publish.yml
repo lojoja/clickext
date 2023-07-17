@@ -9,7 +9,9 @@ jobs:
     name: Publish
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: write
+      id-token: write
     steps:
       - name: Download release assets
         uses: dsaltares/fetch-gh-release-asset@a40c8b4a0471f9ab81bdf73a010f74cc51476ad4
