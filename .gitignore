@@ -1,7 +1,9 @@
+!*
 *.coverage
 *.egg-ignore
 *.egg-info
 *.py[cod]
+*.sublime-workspace
 .DS_Store
 .pytest_cache
 .venv
