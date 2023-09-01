@@ -22,11 +22,11 @@ jobs:
           target: assets/
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish on TestPyPi
-        uses: pypa/gh-action-pypi-publish@f8c70e705ffc13c3b4d1221169b84f12a75d6ca8
+        uses: pypa/gh-action-pypi-publish@b7f401de30cb6434a1e19f805ff006643653240e
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: assets/
       - name: Publish on PyPi
-        uses: pypa/gh-action-pypi-publish@f8c70e705ffc13c3b4d1221169b84f12a75d6ca8
+        uses: pypa/gh-action-pypi-publish@b7f401de30cb6434a1e19f805ff006643653240e
         with:
           packages-dir: assets/
