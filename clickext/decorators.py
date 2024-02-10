@@ -14,9 +14,9 @@ import tomli
 import yaml
 
 try:
-    from yaml import CLoader as YamlLoader
+    from yaml import CSafeLoader as SafeLoader
 except ImportError:  # pragma: no cover
-    from yaml import Loader as YamlLoader
+    from yaml import SafeLoader
 
 from .core import ClickextCommand
 
@@ -95,7 +95,7 @@ def config_option(
                     case ".toml":
                         config = tomli.loads(raw_text)
                     case ".yaml" | ".yml":
-                        config = yaml.load(raw_text, Loader=YamlLoader)
+                        config = yaml.load(raw_text, Loader=SafeLoader)
                     case _:
                         raise click.ClickException(f'Unknown configuration file format "{value.suffix}"')
             except (json.JSONDecodeError, tomli.TOMLDecodeError, yaml.YAMLError) as exc:
