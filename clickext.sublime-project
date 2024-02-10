@@ -7,17 +7,19 @@
 	],
 	"settings": {
 		"LSP": {
+			"LSP-pylsp": {
+				"settings": {
+					"pylsp.plugins.pylint.executable": ".venv/bin/pylint"
+				}
+			},
+			"LSP-pyright": {
+				"settings": {}
+			},
 			"ltex-ls": {
 				"settings": {
 					"ltex.dictionary": {
 						"en-US": ["clickext", "subcommand", "unaliased"]
 					}
-				}
-			},
-			"LSP-pylsp": {
-				"settings": {
-					"pylsp.plugins.flake8.executable": ".venv/bin/flake8",
-					"pylsp.plugins.pylint.executable": ".venv/bin/pylint"
 				}
 			}
 		}
