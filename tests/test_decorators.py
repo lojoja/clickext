@@ -23,8 +23,8 @@ test_logger = logging.getLogger("test_decorators")
     ids=["read error", "config not found (required)", "config not found (not required)"],
 )
 def test_config_error(mocker: pytest_mock.MockerFixture, is_file: bool, require_config: bool, output: str):
-    mocker.patch("clickext.decorators.pathlib.Path.is_file", return_value=is_file)
-    mocker.patch("clickext.decorators.pathlib.Path.read_text", side_effect=IOError)
+    mocker.patch("clickext.decorators.Path.is_file", return_value=is_file)
+    mocker.patch("clickext.decorators.Path.read_text", side_effect=IOError)
 
     @click.command(cls=ClickextCommand)
     @config_option("config.json", require_config=require_config)
@@ -64,8 +64,8 @@ def test_config_error(mocker: pytest_mock.MockerFixture, is_file: bool, require_
     ],
 )
 def test_config_parse(mocker: pytest_mock.MockerFixture, file: str, source: str, output: str):
-    mocker.patch("clickext.decorators.pathlib.Path.is_file", return_value=bool(source))
-    mocker.patch("clickext.decorators.pathlib.Path.read_text", return_value=source)
+    mocker.patch("clickext.decorators.Path.is_file", return_value=bool(source))
+    mocker.patch("clickext.decorators.Path.read_text", return_value=source)
 
     @click.command(cls=ClickextCommand)
     @config_option(file)
@@ -80,8 +80,8 @@ def test_config_parse(mocker: pytest_mock.MockerFixture, file: str, source: str,
 
 
 def test_config_processor(mocker: pytest_mock.MockerFixture):
-    mocker.patch("clickext.decorators.pathlib.Path.is_file", return_value=True)
-    mocker.patch("clickext.decorators.pathlib.Path.read_text", return_value='{"foo": 100}')
+    mocker.patch("clickext.decorators.Path.is_file", return_value=True)
+    mocker.patch("clickext.decorators.Path.read_text", return_value='{"foo": 100}')
 
     def config_processor(data):
         data["foo"] = data["foo"] * 5

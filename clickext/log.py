@@ -16,6 +16,22 @@ QUIET_LEVEL_NAME = "QUIET"
 QUIET_LEVEL_NUM = 1000
 
 
+class Styles(t.TypedDict, total=False):
+    """Style types for `click.style`"""
+
+    fg: t.Optional[int | t.Tuple[int, int, int] | str]
+    bg: t.Optional[int | t.Tuple[int, int, int] | str]
+    bold: t.Optional[bool]
+    dim: t.Optional[bool]
+    underline: t.Optional[bool]
+    overline: t.Optional[bool]
+    italic: t.Optional[bool]
+    blink: t.Optional[bool]
+    reverse: t.Optional[bool]
+    strikethrough: t.Optional[bool]
+    reset: bool
+
+
 class ColorFormatter(logging.Formatter):
     """Stylize click messages.
 
@@ -26,7 +42,7 @@ class ColorFormatter(logging.Formatter):
         styles: A mapping of log levels to display styles.
     """
 
-    styles: dict[str, t.Any] = {
+    styles: dict[str, Styles] = {
         "critical": {"fg": "red"},
         "debug": {"fg": "blue"},
         "error": {"fg": "red"},
@@ -34,7 +50,7 @@ class ColorFormatter(logging.Formatter):
         "warning": {"fg": "yellow"},
     }
 
-    def format(self, record):
+    def format(self, record: logging.LogRecord) -> str:
         if not record.exc_info:
             level = record.levelname.lower()
             msg = record.getMessage()
@@ -57,7 +73,7 @@ class ConsoleHandler(logging.Handler):
 
     stderr_levels = ["critical", "error", "exceptions", "warning"]
 
-    def emit(self, record):
+    def emit(self, record: logging.LogRecord) -> None:
         try:
             msg = self.format(record)
             use_stderr = record.levelname.lower() in self.stderr_levels

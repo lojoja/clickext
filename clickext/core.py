@@ -9,10 +9,7 @@ import typing as t
 import click
 
 
-__all__ = [
-    "ClickextCommand",
-    "ClickextGroup",
-]
+__all__ = ["ClickextCommand", "ClickextGroup"]
 
 
 class ClickextCommand(click.Command):
@@ -35,18 +32,18 @@ class ClickextCommand(click.Command):
 
     def __init__(
         self,
-        *args,
+        name: t.Optional[str] = None,
         aliases: t.Optional[list[str]] = None,
         mx_opts: t.Optional[list[tuple[str]]] = None,
-        **kwargs,
+        **attrs: t.Any,
     ):
         self.aliases = sorted(aliases or [])
         self.mx_opts = mx_opts or []
         self.global_opts: dict[str, click.Option] = {}
 
-        super().__init__(*args, **kwargs)
+        super().__init__(name, **attrs)
 
-    def invoke(self, ctx):
+    def invoke(self, ctx: click.Context) -> t.Any:
         """Given a context, this invokes the command.
 
         Uncaught non-click exceptions (excluding `EOFError`, `KeyboardInterrupt`, and `OSError`) are caught and
@@ -63,7 +60,7 @@ class ClickextCommand(click.Command):
         except Exception as exc:  # pylint: disable=broad-except
             raise click.ClickException(str(exc)) from exc
 
-    def parse_args(self, ctx, args):
+    def parse_args(self, ctx: click.Context, args: t.List[str]) -> t.List[str]:
         """Parse arguments and update the context.
 
         Mutually exclusive options are validated after parsing because the resolved values are required to determine
@@ -96,12 +93,12 @@ class ClickextCommand(click.Command):
         """Get a list of global options registered with the command."""
         return list(self.global_opts.values())
 
-    def format_help(self, ctx, formatter):
+    def format_help(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
         """Writes the help into the formatter if it exists."""
         super().format_help(ctx, formatter)
         self.format_aliases(ctx, formatter)
 
-    def format_options(self, ctx, formatter):
+    def format_options(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
         """Add options to the program help display.
 
         Options are sorted alphabetically by the first CLI option string. If the command is part of a `ClickextGroup`
@@ -170,12 +167,12 @@ class ClickextGroup(ClickextCommand, click.Group):
 
     def __init__(
         self,
-        *args,
+        name: t.Optional[str] = None,
         global_opts: t.Optional[list[str]] = None,
         shared_params: t.Optional[list[str]] = None,
-        **kwargs,
+        **attr: t.Any,
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(name, **attr)
 
         self.global_opts: dict[str, click.Option] = self.init_global_options(global_opts)
         self.shared_params: dict[str, click.Parameter] = self.init_shared_params(shared_params)
@@ -231,7 +228,7 @@ class ClickextGroup(ClickextCommand, click.Group):
 
         return params
 
-    def parse_args(self, ctx, args):
+    def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
         """Parse arguments and update the context.
 
         Global options are extracted and prepended to the argument list before parsing.
@@ -273,7 +270,9 @@ class ClickextGroup(ClickextCommand, click.Group):
 
         return [*grp_args, *cmd_args]
 
-    def add_command(self, cmd: ClickextCommand, name=None):
+    def add_command(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, cmd: ClickextCommand, name: t.Optional[str] = None
+    ) -> None:
         """Register a command with this group.
 
         Global options are stored separately on the command to use in the program help display.
@@ -293,14 +292,14 @@ class ClickextGroup(ClickextCommand, click.Group):
 
         super().add_command(cmd, name)
 
-    def get_command(self, ctx, cmd_name):
+    def get_command(self, ctx: click.Context, cmd_name: str) -> t.Optional[ClickextCommand]:
         """Get a command by name or alias."""
         for name, cmd in self.commands.items():
             if cmd_name == name or cmd_name in getattr(cmd, "aliases", []):
                 cmd_name = name
                 break
 
-        return super().get_command(ctx, cmd_name)
+        return super().get_command(ctx, cmd_name)  # pyright: ignore[reportReturnType]
 
     def validate_command(self, cmd: ClickextCommand, name: str) -> None:
         """Validate global options and shared parameters for a command.
@@ -332,7 +331,7 @@ class ClickextGroup(ClickextCommand, click.Group):
         """Get a list of parameters shared with all subcommands."""
         return list(self.shared_params.values())
 
-    def format_commands(self, ctx, formatter):
+    def format_commands(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
         """Add subcommands to the program help display."""
 
         commands: list[tuple[str, click.Command]] = []
@@ -363,7 +362,7 @@ class ClickextGroup(ClickextCommand, click.Group):
                 with formatter.section("Commands"):
                     formatter.write_dl(rows)
 
-    def format_options(self, ctx, formatter):
+    def format_options(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
         """Add options and commands to the program help display.
 
         Options are sorted alphabetically by the first CLI option string.

@@ -6,7 +6,7 @@ Argument and option decorators for clickext commands.
 
 import json
 import logging
-import pathlib
+from pathlib import Path
 import typing as t
 
 import click
@@ -21,13 +21,17 @@ except ImportError:  # pragma: no cover
 from .core import ClickextCommand
 
 
+_AnyCallable: t.TypeAlias = t.Callable[..., t.Any]
+FC = t.TypeVar("FC", bound=_AnyCallable | ClickextCommand)
+
+
 def config_option(
-    file: pathlib.Path | str,
+    file: Path | str,
     *param_decls: str,
-    processor: t.Optional[t.Callable] = None,
+    processor: t.Optional[_AnyCallable] = None,
     require_config: bool = False,
     **kwargs: t.Any,
-) -> t.Union[t.Callable[..., t.Any], ClickextCommand]:
+) -> t.Callable[[FC], FC]:
     """Adds a configuration file option.
 
     Provides a method to load, parse, and optionally prepare data from a configuration file. The result is saved to
@@ -68,10 +72,10 @@ def config_option(
     """
 
     def callback(
-        ctx: click.Context, param: click.Parameter, value: pathlib.Path | str  # pylint: disable=unused-argument
+        ctx: click.Context, param: click.Parameter, value: Path | str  # pylint: disable=unused-argument
     ) -> None:
         if isinstance(value, str):
-            value = pathlib.Path(value)
+            value = Path(value)
 
         raw_text = None
 
@@ -117,9 +121,7 @@ def config_option(
     return click.option(*param_decls, **kwargs)
 
 
-def verbose_option(
-    logger: logging.Logger, *param_decls: str, **kwargs: t.Any
-) -> t.Union[t.Callable[..., t.Any], ClickextCommand]:
+def verbose_option(logger: logging.Logger, *param_decls: str, **kwargs: t.Any) -> t.Callable[[FC], FC]:
     """Adds a verbose option.
 
     A flag to switch between standard output and verbose output. Output is handled by the given logger. The logger must
@@ -150,9 +152,7 @@ def verbose_option(
     return click.option(*param_decls, **kwargs)
 
 
-def verbosity_option(
-    logger: logging.Logger, *param_decls: str, **kwargs: t.Any
-) -> t.Union[t.Callable[..., t.Any], ClickextCommand]:
+def verbosity_option(logger: logging.Logger, *param_decls: str, **kwargs: t.Any) -> t.Callable[[FC], FC]:
     """Adds a configurable verbosity option.
 
     Output is handled by the given logger. The logger must be passed to `clickext.init_logging` before using the

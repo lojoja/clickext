@@ -22,7 +22,7 @@ def patch_exceptions(logger: logging.Logger) -> None:
     Arguments:
         logger: The logger that should click exceptions should be routed to.
     """
-    click.ClickException.logger = logger  # type: ignore
+    click.ClickException.logger = logger  # pyright: ignore[reportAttributeAccessIssue]
 
 
 def show_exception_patch(self: click.ClickException, file: t.Optional[t.IO] = None) -> None:
@@ -30,7 +30,7 @@ def show_exception_patch(self: click.ClickException, file: t.Optional[t.IO] = No
     file = click.get_text_stream("stderr") if file is None else file
 
     if getattr(self, "logger", None) is not None:
-        self.logger.error(self.format_message())  # type: ignore
+        self.logger.error(self.format_message())  # pyright: ignore[reportAttributeAccessIssue]
     else:
         click.echo(f"Error: {self.format_message()}", file=file)
 
@@ -48,11 +48,11 @@ def show_usage_error_patch(self: click.UsageError, file: t.Optional[t.IO] = None
         click.echo(f"{self.ctx.get_usage()}\n{hint}", file=file, color=None)
 
     if getattr(self, "logger", None) is not None:
-        self.logger.error(self.format_message())  # type: ignore
+        self.logger.error(self.format_message())  # pyright: ignore[reportAttributeAccessIssue]
     else:
         click.echo(f"Error: {self.format_message()}", file=file)
 
 
-click.ClickException.logger = None  # type: ignore
+click.ClickException.logger = None  # pyright: ignore[reportAttributeAccessIssue]
 click.ClickException.show = show_exception_patch
 click.UsageError.show = show_usage_error_patch
