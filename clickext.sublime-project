@@ -1,12 +1,8 @@
 {
 	"folders": [
 		{
-			"folder_exclude_patterns": [
-				"__pycache__",
-				"*.egg-info",
-				".pytest_cache"
-			],
-			"path": ".",
+			"folder_exclude_patterns": ["__pycache__", "*.egg-info", ".pytest_cache"],
+			"path": "."
 		}
 	],
 	"settings": {
@@ -14,12 +10,8 @@
 			"ltex-ls": {
 				"settings": {
 					"ltex.dictionary": {
-						"en-US": [
-							"clickext",
-							"subcommand",
-							"unaliased"
-						]
-					},
+						"en-US": ["clickext", "subcommand", "unaliased"]
+					}
 				}
 			},
 			"LSP-pylsp": {

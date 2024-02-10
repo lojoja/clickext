@@ -2,12 +2,10 @@
 
 Extended features for the Python [click](https://github.com/pallets/click) library. Includes global logging configuration and error handling for pretty console output, aliased commands, command groups with global and shared subcommand options, mutually exclusive options, verbosity level options, and a configuration file option.
 
-
 ## Requirements
 
-* Python 3.10.x, 3.11.x
-* click 8.x.x
-
+- Python 3.10.x, 3.11.x
+- click 8.x.x
 
 ## Installation
 
