@@ -96,14 +96,15 @@ def init_logging(logger: logging.Logger, level: int = logging.INFO) -> logging.L
         logger: The logger to configure.
         level: The default log level to print (default: `logging.INFO`).
     """
+    logger.handlers.clear()
+
     if not hasattr(logging, QUIET_LEVEL_NAME):
         logging.addLevelName(QUIET_LEVEL_NUM, QUIET_LEVEL_NAME)
         setattr(logging, QUIET_LEVEL_NAME, QUIET_LEVEL_NUM)
 
     handler = ConsoleHandler()
     handler.setFormatter(ColorFormatter())
-
-    logger.handlers = [handler]
+    logger.addHandler(handler)
     logger.setLevel(level)
 
     patch_exceptions(logger)
