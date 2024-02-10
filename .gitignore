@@ -4,6 +4,7 @@
 *.egg-info
 *.py[cod]
 *.sublime-workspace
+._*
 .DS_Store
 .pytest_cache
 .venv
