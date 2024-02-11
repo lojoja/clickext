@@ -9,23 +9,6 @@ import pytest
 from clickext.log import ConsoleFormatter, ConsoleHandler, init_logging, QUIET_LEVEL_NUM, QUIET_LEVEL_NAME
 
 
-@pytest.fixture(name="logger")
-def logger_fixture(monkeypatch: pytest.MonkeyPatch) -> t.Generator[logging.Logger, t.Any, t.Any]:
-    """Resets logging and returns a "clean" logger for tests."""
-
-    monkeypatch.delitem(logging._levelToName, QUIET_LEVEL_NUM, raising=False)  # pylint: disable=protected-access
-    monkeypatch.delitem(logging._nameToLevel, QUIET_LEVEL_NAME, raising=False)  # pylint: disable=protected-access
-    monkeypatch.delattr(logging, QUIET_LEVEL_NAME, raising=False)
-    monkeypatch.setattr("click.ClickException.logger", None)
-
-    logger = logging.getLogger("test_logger")
-
-    yield logger
-
-    logger.handlers.clear()
-    logger.setLevel(logging.WARNING)
-
-
 @pytest.mark.parametrize("exc_info", [True, False])
 @pytest.mark.parametrize(
     ["level", "color"],
@@ -55,8 +38,8 @@ def test_color_formatter_format(message: str, level: int, color: t.Optional[None
 
 @pytest.mark.parametrize("exc", [True, False])
 @pytest.mark.parametrize("valid", [True, False])
-def test_console_handler_emit(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, valid: bool, exc: bool):
-    monkeypatch.setattr("logging.raiseExceptions", exc)
+def test_console_handler_emit(capsys: pytest.CaptureFixture, valid: bool, exc: bool):
+    logging.raiseExceptions = exc
     record = logging.LogRecord("name", logging.ERROR, "path", 1, "msg", None, None) if valid else None
 
     handler = ConsoleHandler()
@@ -96,6 +79,12 @@ def test_init_logging(capsys: pytest.CaptureFixture, logger: logging.Logger, lev
     assert logger.getEffectiveLevel() == level
     assert captured.err == expected_err
     assert captured.out == expected_out
+
+
+@pytest.mark.parametrize("level", [logging.DEBUG, logging.INFO])
+def test_init_logging_raise_exceptions(logger: logging.Logger, level: int):
+    init_logging(logger, level)
+    assert logging.raiseExceptions == (level == logging.DEBUG)
 
 
 def test_init_logging_clears_handlers(logger: logging.Logger):

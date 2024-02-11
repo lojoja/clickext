@@ -10,9 +10,6 @@ import pytest_mock
 from clickext import ClickextCommand, init_logging, config_option, verbose_option, verbosity_option
 
 
-test_logger = logging.getLogger("test_decorators")
-
-
 @pytest.mark.parametrize(
     ["is_file", "require_config", "output"],
     [
@@ -104,19 +101,22 @@ def test_config_processor(mocker: pytest_mock.MockerFixture):
     [([], logging.INFO, "visible message\n"), (["--verbose"], logging.DEBUG, "Debug: visible message\n")],
     ids=["not verbose", "verbose"],
 )
-def test_verbose(args: list[str], level: int, output: str):  # pylint: disable=redefined-outer-name
-    init_logging(test_logger)
+def test_verbose(
+    logger: logging.Logger, args: list[str], level: int, output: str
+):  # pylint: disable=redefined-outer-name
+    init_logging(logger)
 
     @click.command(cls=ClickextCommand)
-    @verbose_option(test_logger)
+    @verbose_option(logger)
     def cmd():
-        test_logger.log(level, "visible message")
-        test_logger.log(level - 5, "hidden message")
+        logger.log(level, "visible message")
+        logger.log(level - 5, "hidden message")
 
     runner = CliRunner()
     result = runner.invoke(cmd, args)
 
-    assert test_logger.getEffectiveLevel() == level
+    assert logging.raiseExceptions == (level == logging.DEBUG)
+    assert logger.getEffectiveLevel() == level
     assert result.output == output
 
 
@@ -134,17 +134,20 @@ def test_verbose(args: list[str], level: int, output: str):  # pylint: disable=r
     ],
     ids=["debug", "info (default)", "info", "warning", "error", "critical", "quiet", "invalid"],
 )
-def test_verbosity(args: list[str], level: int, output: str):  # pylint: disable=redefined-outer-name
-    init_logging(test_logger)
+def test_verbosity(
+    logger: logging.Logger, args: list[str], level: int, output: str
+):  # pylint: disable=redefined-outer-name
+    init_logging(logger)
 
     @click.command(cls=ClickextCommand)
-    @verbosity_option(test_logger)
+    @verbosity_option(logger)
     def cmd():
-        test_logger.log(level, "visible message")
-        test_logger.log(level - 5, "hidden message")
+        logger.log(level, "visible message")
+        logger.log(level - 5, "hidden message")
 
     runner = CliRunner()
     result = runner.invoke(cmd, args)
 
-    assert test_logger.getEffectiveLevel() == level
+    assert logging.raiseExceptions == (level == logging.DEBUG)
+    assert logger.getEffectiveLevel() == level
     assert output in result.output
