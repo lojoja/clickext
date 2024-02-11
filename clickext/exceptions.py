@@ -20,24 +20,23 @@ def patch_exceptions(logger: logging.Logger) -> None:
     This function is called automatically by `clickext.init_logging`.
 
     Arguments:
-        logger: The logger that should click exceptions should be routed to.
+        logger: The logger that click exception output should be routed to.
     """
     click.ClickException.logger = logger  # pyright: ignore[reportAttributeAccessIssue]
+    click.ClickException.show = _click_exception_patch
+    click.UsageError.show = _click_usage_error_patch
 
 
-def show_exception_patch(self: click.ClickException, file: t.Optional[t.IO] = None) -> None:
-    """Patch for `click.ClickException.show` to send messages to a logger, when configured."""
+def _click_exception_patch(self: click.ClickException, file: t.Optional[t.IO] = None) -> None:
+    """Patch for `click.ClickException.show` that sends output a logger."""
     file = click.get_text_stream("stderr") if file is None else file
-
-    if getattr(self, "logger", None) is not None:
-        self.logger.error(self.format_message())  # pyright: ignore[reportAttributeAccessIssue]
-    else:
-        click.echo(f"Error: {self.format_message()}", file=file)
+    self.logger.error(self.format_message())  # pyright: ignore[reportAttributeAccessIssue]
 
 
-def show_usage_error_patch(self: click.UsageError, file: t.Optional[t.IO] = None) -> None:
-    """Patch for `click.UsageError.show` to send messages to a logger, when configured."""
+def _click_usage_error_patch(self: click.UsageError, file: t.Optional[t.IO] = None) -> None:
+    """Patch for `click.UsageError.show` that sends output a logger."""
     file = click.get_text_stream("stderr") if file is None else file
+    hint = ""
 
     if self.ctx is not None:
         hint = ""
@@ -47,12 +46,4 @@ def show_usage_error_patch(self: click.UsageError, file: t.Optional[t.IO] = None
 
         click.echo(f"{self.ctx.get_usage()}\n{hint}", file=file, color=None)
 
-    if getattr(self, "logger", None) is not None:
-        self.logger.error(self.format_message())  # pyright: ignore[reportAttributeAccessIssue]
-    else:
-        click.echo(f"Error: {self.format_message()}", file=file)
-
-
-click.ClickException.logger = None  # pyright: ignore[reportAttributeAccessIssue]
-click.ClickException.show = show_exception_patch
-click.UsageError.show = show_usage_error_patch
+    self.logger.error(self.format_message())  # pyright: ignore[reportAttributeAccessIssue]

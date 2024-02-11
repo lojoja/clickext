@@ -5,35 +5,42 @@ import logging
 import click
 import pytest
 
+from clickext.exceptions import patch_exceptions, _click_exception_patch, _click_usage_error_patch
 from clickext.log import init_logging
 
 
-@pytest.mark.parametrize(
-    ["exception", "msg", "output"],
-    [
-        (click.ClickException, "exception message", "Error: exception message\n"),
-        (click.UsageError, "usage error message", "Error: usage error message\n"),
-    ],
-    ids=["click exception", "usage error"],
-)
-def test_unpatched_exception(capsys: pytest.CaptureFixture, exception: click.ClickException, msg: str, output: str):
-    exception(msg).show()  # type: ignore
-    captured = capsys.readouterr()
-    assert captured.err == output
+def test_patch_exceptions(logger: logging.Logger):
+    patch_exceptions(logger)
+    assert click.ClickException.logger is logger  # pyright: ignore[reportAttributeAccessIssue]
+    assert click.ClickException.show is _click_exception_patch
+    assert click.UsageError.show is _click_usage_error_patch
 
 
-@pytest.mark.parametrize(
-    ["exception", "msg", "output"],
-    [
-        (click.ClickException, "exception message", "Error: exception message\n"),
-        (click.UsageError, "usage error message", "Error: usage error message\n"),
-    ],
-    ids=["click exception", "usage error"],
-)
-def test_patched_exception(
-    capsys: pytest.CaptureFixture, logger: logging.Logger, exception: click.ClickException, msg: str, output: str
-):
+def test__click_exception_patch(capsys: pytest.CaptureFixture, logger: logging.Logger):
     init_logging(logger)
-    exception(msg).show()  # type: ignore
-    captured = capsys.readouterr()
-    assert captured.err == output
+    _click_exception_patch(click.ClickException("test"))
+    assert capsys.readouterr().err == "Error: test\n"
+
+
+@pytest.mark.parametrize("has_help", [True, False])
+@pytest.mark.parametrize("has_context", [True, False])
+def test__click_usage_error_patch(
+    capsys: pytest.CaptureFixture, logger: logging.Logger, has_context: bool, has_help: bool
+):
+    ctx = None
+    usage_message = ""
+
+    if has_context:
+        cmd = click.Command("foo", add_help_option=has_help)
+        ctx = click.Context(cmd)
+        usage_message = "Usage:  [OPTIONS]\n"
+
+        if has_help:
+            usage_message += "Try ' --help' for help.\n"
+
+        usage_message += "\n"
+
+    init_logging(logger)
+    _click_usage_error_patch(click.UsageError("test", ctx))
+
+    assert capsys.readouterr().err == f"{usage_message}Error: test\n"
