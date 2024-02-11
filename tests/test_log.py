@@ -14,13 +14,8 @@ def logger_fixture(monkeypatch: pytest.MonkeyPatch) -> t.Generator[logging.Logge
 
     monkeypatch.delitem(logging._levelToName, QUIET_LEVEL_NUM, raising=False)  # pylint: disable=protected-access
     monkeypatch.delitem(logging._nameToLevel, QUIET_LEVEL_NAME, raising=False)  # pylint: disable=protected-access
-    monkeypatch.delattr("clickext.log.logging.QUIET", raising=False)
+    monkeypatch.delattr(logging, QUIET_LEVEL_NAME, raising=False)
     monkeypatch.setattr("click.ClickException.logger", None)
-
-    try:
-        delattr(logging, QUIET_LEVEL_NAME)
-    except AttributeError:
-        pass
 
     logger = logging.getLogger("test_logger")
 
