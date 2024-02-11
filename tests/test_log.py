@@ -6,7 +6,18 @@ import typing as t
 import click
 import pytest
 
-from clickext.log import ConsoleFormatter, ConsoleHandler, init_logging, QUIET_LEVEL_NUM, QUIET_LEVEL_NAME
+from clickext.log import (
+    ColorFormatter,
+    ConsoleFormatter,
+    ConsoleHandler,
+    init_logging,
+    QUIET_LEVEL_NUM,
+    QUIET_LEVEL_NAME,
+)
+
+
+def test_color_formatter_inherits_console_formatter():
+    assert issubclass(ColorFormatter, ConsoleFormatter)
 
 
 @pytest.mark.parametrize("exc_info", [True, False])
@@ -21,7 +32,7 @@ from clickext.log import ConsoleFormatter, ConsoleHandler, init_logging, QUIET_L
     ],
 )
 @pytest.mark.parametrize("message", ["line", "multi\nline", "  \nstripline \n"])
-def test_color_formatter_format(message: str, level: int, color: t.Optional[None], exc_info: bool):
+def test_console_formatter_format(message: str, level: int, color: t.Optional[None], exc_info: bool):
     record = logging.LogRecord("name", level, "path", 1, message, None, (None, None, None) if exc_info else None)
     expected = message.strip()
 
@@ -81,12 +92,6 @@ def test_init_logging(capsys: pytest.CaptureFixture, logger: logging.Logger, lev
     assert captured.out == expected_out
 
 
-@pytest.mark.parametrize("level", [logging.DEBUG, logging.INFO])
-def test_init_logging_raise_exceptions(logger: logging.Logger, level: int):
-    init_logging(logger, level)
-    assert logging.raiseExceptions == (level == logging.DEBUG)
-
-
 def test_init_logging_clears_handlers(logger: logging.Logger):
     logger.addHandler(logging.NullHandler())
     logger.addHandler(logging.StreamHandler())
@@ -108,3 +113,9 @@ def test_init_logging_creates_quiet_level(logger: logging.Logger, is_set: bool):
 
     assert logging.getLevelName(QUIET_LEVEL_NUM) == QUIET_LEVEL_NAME
     assert getattr(logging, QUIET_LEVEL_NAME) == QUIET_LEVEL_NUM
+
+
+@pytest.mark.parametrize("level", [logging.DEBUG, logging.INFO])
+def test_init_logging_raise_exceptions(logger: logging.Logger, level: int):
+    init_logging(logger, level)
+    assert logging.raiseExceptions == (level == logging.DEBUG)

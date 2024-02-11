@@ -2,8 +2,8 @@
 
 import logging
 import typing as t
-import click
 
+import click
 import pytest
 
 
