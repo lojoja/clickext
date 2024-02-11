@@ -5,6 +5,7 @@ Logging and console output handling for clickext programs.
 """
 
 import logging
+import textwrap
 import typing as t
 
 import click
@@ -32,14 +33,14 @@ class Styles(t.TypedDict, total=False):
     reset: bool
 
 
-class ColorFormatter(logging.Formatter):
-    """Stylize click messages.
+class ConsoleFormatter(logging.Formatter):
+    """Format log messages for the console.
 
     Messages are prefixed with the log level. Prefixes can be styled with all options available to `click.style`. To
-    customize styling for one or more log levels, set the desired options in `ClickextFormatter.styles`.
+    customize styling for one or more log levels, set the desired options in `ConsoleFormatter.styles`.
 
     Attributes:
-        styles: A mapping of log levels to display styles.
+        styles: A mapping of log levels to prefix display styles.
     """
 
     styles: dict[str, Styles] = {
@@ -47,25 +48,35 @@ class ColorFormatter(logging.Formatter):
         "debug": {"fg": "blue"},
         "error": {"fg": "red"},
         "exception": {"fg": "red"},
+        "info": {},
         "warning": {"fg": "yellow"},
     }
 
     def format(self, record: logging.LogRecord) -> str:
-        if not record.exc_info:
-            level = record.levelname.lower()
-            msg = record.getMessage()
+        record.message = record.getMessage().strip()
 
-            if level in self.styles:
-                prefix = click.style(f"{level.title()}:", **self.styles[level])
-                msg = "\n".join(f"{prefix} {line}" for line in msg.splitlines())
+        style = self.styles.get(record.levelname.lower())
 
-            return msg
+        if style:
+            prefix = click.style(f"{record.levelname.title()}:", **style)
+            record.message = f"{prefix} {record.message}"
+            record.message = textwrap.indent(
+                record.message, " " * (len(record.levelname) + 2), lambda x: not x.startswith(prefix)
+            )
 
-        return logging.Formatter.format(self, record)
+        if record.exc_info:
+            record.exc_text = self.formatException(record.exc_info)
+            record.message = f"{record.message}\n{record.exc_text}"
+
+        return record.message
+
+
+class ColorFormatter(ConsoleFormatter):
+    """For backwards compatibility; use `ConsoleFormatter` instead."""
 
 
 class ConsoleHandler(logging.Handler):
-    """Handle click console messages.
+    """Send log messages to the console.
 
     Attributes:
         stderr_levels: Log levels that should write to stderr instead of stdout.
@@ -85,7 +96,7 @@ class ConsoleHandler(logging.Handler):
 def init_logging(logger: logging.Logger, level: int = logging.INFO) -> logging.Logger:
     """Initialize program logging.
 
-    Configures the given logger for console output, with `ConsoleHandler` and `ColorFormatter`. `click.ClickException`
+    Configures the given logger for console output, with `ConsoleHandler` and `ConsoleFormatter`. `click.ClickException`
     and children are patched to send errors messages to the logger instead of printing to the console directly. If this
     function is not called `click.ClickException` error messages cannot be suppressed by changing the logger level.
 
@@ -103,7 +114,7 @@ def init_logging(logger: logging.Logger, level: int = logging.INFO) -> logging.L
         setattr(logging, QUIET_LEVEL_NAME, QUIET_LEVEL_NUM)
 
     handler = ConsoleHandler()
-    handler.setFormatter(ColorFormatter())
+    handler.setFormatter(ConsoleFormatter())
     logger.addHandler(handler)
     logger.setLevel(level)
 

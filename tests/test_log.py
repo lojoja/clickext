@@ -3,9 +3,10 @@
 import logging
 import typing as t
 
+import click
 import pytest
 
-from clickext.log import ColorFormatter, ConsoleHandler, init_logging, QUIET_LEVEL_NUM, QUIET_LEVEL_NAME
+from clickext.log import ConsoleFormatter, ConsoleHandler, init_logging, QUIET_LEVEL_NUM, QUIET_LEVEL_NAME
 
 
 @pytest.fixture(name="logger")
@@ -25,26 +26,31 @@ def logger_fixture(monkeypatch: pytest.MonkeyPatch) -> t.Generator[logging.Logge
     logger.setLevel(logging.WARNING)
 
 
+@pytest.mark.parametrize("exc_info", [True, False])
 @pytest.mark.parametrize(
-    ["level", "ansi"],
+    ["level", "color"],
     [
-        (logging.DEBUG, "34m"),
-        (logging.INFO, ""),
-        (logging.WARNING, "33m"),
-        (logging.ERROR, "31m"),
-        (logging.CRITICAL, "31m"),
+        (logging.DEBUG, "blue"),
+        (logging.INFO, None),
+        (logging.WARNING, "yellow"),
+        (logging.ERROR, "red"),
+        (logging.CRITICAL, "red"),
     ],
 )
-@pytest.mark.parametrize("exc_info", [True, False])
-def test_color_formatter_format(exc_info: bool, level: int, ansi: str):
-    record = logging.LogRecord("name", level, "path", 1, "msg", None, (None, None, None) if exc_info else None)
-    formatter = ColorFormatter()
+@pytest.mark.parametrize("message", ["line", "multi\nline", "  \nstripline \n"])
+def test_color_formatter_format(message: str, level: int, color: t.Optional[None], exc_info: bool):
+    record = logging.LogRecord("name", level, "path", 1, message, None, (None, None, None) if exc_info else None)
+    expected = message.strip()
 
-    if record.exc_info:
-        assert formatter.format(record) == "msg\nNoneType: None"
-    else:
-        prefix = f"\x1b[{ansi}{logging.getLevelName(level).title()}:\x1b[0m " if ansi else ""
-        assert formatter.format(record) == f"{prefix}msg"
+    if color:
+        indent = " " * (len(record.levelname) + 2)
+        expected = click.style(f"{record.levelname.title()}:", fg=color) + f" {expected}"
+        expected = "\n".join([f"{indent if idx > 0 else ''}{line}" for idx, line in enumerate(expected.splitlines())])
+
+    if exc_info:
+        expected = f"{expected}\nNoneType: None"
+
+    assert ConsoleFormatter().format(record) == expected
 
 
 @pytest.mark.parametrize("valid", [True, False])
@@ -52,7 +58,7 @@ def test_console_handler_emit(capsys: pytest.CaptureFixture, valid: bool):
     record = logging.LogRecord("name", logging.ERROR, "path", 1, "msg", None, None) if valid else None
 
     handler = ConsoleHandler()
-    handler.setFormatter(ColorFormatter())
+    handler.setFormatter(ConsoleFormatter())
     handler.emit(record)  # type:ignore
 
     err = capsys.readouterr().err
@@ -96,7 +102,7 @@ def test_init_logging_clears_handlers(logger: logging.Logger):
 
     assert len(logger.handlers) == 1
     assert isinstance(logger.handlers[0], ConsoleHandler)
-    assert isinstance(logger.handlers[0].formatter, ColorFormatter)
+    assert isinstance(logger.handlers[0].formatter, ConsoleFormatter)
 
 
 @pytest.mark.parametrize("is_set", [True, False])
