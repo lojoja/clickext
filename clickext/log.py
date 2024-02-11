@@ -61,7 +61,7 @@ class ColorFormatter(logging.Formatter):
 
             return msg
 
-        return logging.Formatter.format(self, record)  # pragma: no cover
+        return logging.Formatter.format(self, record)
 
 
 class ConsoleHandler(logging.Handler):
