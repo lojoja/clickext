@@ -53,8 +53,10 @@ def test_color_formatter_format(message: str, level: int, color: t.Optional[None
     assert ConsoleFormatter().format(record) == expected
 
 
+@pytest.mark.parametrize("exc", [True, False])
 @pytest.mark.parametrize("valid", [True, False])
-def test_console_handler_emit(capsys: pytest.CaptureFixture, valid: bool):
+def test_console_handler_emit(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, valid: bool, exc: bool):
+    monkeypatch.setattr("logging.raiseExceptions", exc)
     record = logging.LogRecord("name", logging.ERROR, "path", 1, "msg", None, None) if valid else None
 
     handler = ConsoleHandler()
@@ -65,8 +67,10 @@ def test_console_handler_emit(capsys: pytest.CaptureFixture, valid: bool):
 
     if valid:
         assert err == "Error: msg\n"
-    else:
+    elif exc:
         assert err.startswith("--- Logging error ---\n")
+    else:
+        assert err == ""
 
 
 @pytest.mark.parametrize("level", [logging.DEBUG, logging.INFO, logging.CRITICAL, QUIET_LEVEL_NUM])

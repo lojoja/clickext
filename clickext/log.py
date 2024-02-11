@@ -118,6 +118,8 @@ def init_logging(logger: logging.Logger, level: int = logging.INFO) -> logging.L
     logger.addHandler(handler)
     logger.setLevel(level)
 
+    logging.raiseExceptions = logger.getEffectiveLevel() == logging.DEBUG
+
     patch_exceptions(logger)
 
     return logger

@@ -134,8 +134,8 @@ def verbose_option(logger: logging.Logger, *param_decls: str, **kwargs: t.Any) -
     """
 
     def callback(ctx: click.Context, param: click.Parameter, value: bool) -> None:  # pylint: disable=unused-argument
-        level = logging.DEBUG if value else logging.INFO
-        logger.setLevel(level)
+        logger.setLevel(logging.DEBUG if value else logging.INFO)
+        logging.raiseExceptions = logger.getEffectiveLevel() == logging.DEBUG
 
     if not param_decls:
         param_decls = ("--verbose", "-v")
@@ -175,6 +175,7 @@ def verbosity_option(logger: logging.Logger, *param_decls: str, **kwargs: t.Any)
 
     def callback(ctx: click.Context, param: click.Parameter, value: str) -> None:  # pylint: disable=unused-argument
         logger.setLevel(getattr(logging, value.upper()))
+        logging.raiseExceptions = logger.getEffectiveLevel() == logging.DEBUG
 
     if not param_decls:
         param_decls = ("--verbosity", "-v")
