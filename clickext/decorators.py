@@ -59,6 +59,10 @@ def config_option(
     `processor` is specified, the processor will be passed the `None` value for program-specific handling, otherwise
     `ctx.obj` will be set to `None`.
 
+    By default this option uses the `click.Path` parameter type and returns a `pathlib.Path` object to the loader
+    callback. It will also accept a `str` via the `click.STRING` parameter type if the program cannot use `click.Path`
+    for some reason.
+
     Arguments:
         file: The default configuration file location.
         param_decls: One or more option names. Defaults to "--config / -c".
@@ -112,7 +116,8 @@ def config_option(
         param_decls = ("--config", "-c")
 
     kwargs.setdefault("expose_value", False)
-    kwargs.setdefault("help", "The configuration file to use")
+    kwargs.setdefault("help", "The configuration file to use.")
+    kwargs.setdefault("type", click.Path(path_type=Path))
     kwargs["default"] = str(file)
     kwargs["is_eager"] = False
     kwargs["callback"] = callback
