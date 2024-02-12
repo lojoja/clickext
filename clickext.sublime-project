@@ -18,7 +18,7 @@
 			"ltex-ls": {
 				"settings": {
 					"ltex.dictionary": {
-						"en-US": ["clickext", "subcommand", "unaliased"]
+						"en-US": ["clickext", "subcommand", "subcommands", "unaliased"]
 					}
 				}
 			}
