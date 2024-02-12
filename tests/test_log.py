@@ -67,27 +67,28 @@ def test_console_handler_emit(capsys: pytest.CaptureFixture, valid: bool, exc: b
         assert err == ""
 
 
-@pytest.mark.parametrize("level", [logging.DEBUG, logging.INFO, logging.CRITICAL, QUIET_LEVEL_NUM])
-def test_init_logging(capsys: pytest.CaptureFixture, logger: logging.Logger, level: int):
+@pytest.mark.parametrize("level", [logging.DEBUG, "INFO", logging.INFO, logging.CRITICAL, QUIET_LEVEL_NUM])
+def test_init_logging(capsys: pytest.CaptureFixture, logger: logging.Logger, level: int | str):
     init_logging(logger, level)
 
     logger.debug("debug")
     logger.info("info")
     logger.critical("critical")
 
+    expected_level = level if isinstance(level, int) else logging.getLevelName(level)
     expected_out = ""
     expected_err = ""
 
-    if logging.DEBUG >= level < logging.INFO:
+    if logging.DEBUG >= expected_level < logging.INFO:
         expected_out += "Debug: debug\n"
-    if logging.INFO >= level < logging.WARNING:
+    if logging.INFO >= expected_level < logging.WARNING:
         expected_out += "info\n"
-    if logging.CRITICAL >= level < QUIET_LEVEL_NUM:
+    if logging.CRITICAL >= expected_level < QUIET_LEVEL_NUM:
         expected_err = "Critical: critical\n"
 
     captured = capsys.readouterr()
 
-    assert logger.getEffectiveLevel() == level
+    assert logger.getEffectiveLevel() == expected_level
     assert captured.err == expected_err
     assert captured.out == expected_out
 

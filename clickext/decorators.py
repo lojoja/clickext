@@ -19,6 +19,7 @@ except ImportError:  # pragma: no cover
     from yaml import SafeLoader
 
 from .core import ClickextCommand
+from .log import init_logging
 
 
 _AnyCallable: t.TypeAlias = t.Callable[..., t.Any]
@@ -129,8 +130,10 @@ def config_option(
 def verbose_option(logger: logging.Logger, *param_decls: str, **kwargs: t.Any) -> t.Callable[[FC], FC]:
     """Adds a verbose option.
 
-    A flag to switch between standard output and verbose output. Output is handled by the given logger. The logger must
-    be passed to `clickext.init_logging` before using the decorator.
+    A flag to switch between standard output and verbose output. Output is handled by the given logger. The `--verbose`
+    flag should be passed before any other eager options to ensure the desired verbosity level is set before the other
+    options are evaluated. This option initializes the logging environment so it is not necessary to call
+    `log.init_logging` with the logger when this option is used.
 
     Arguments:
         logger: The logger instance to modify.
@@ -142,12 +145,14 @@ def verbose_option(logger: logging.Logger, *param_decls: str, **kwargs: t.Any) -
         logger.setLevel(logging.DEBUG if value else logging.INFO)
         logging.raiseExceptions = logger.getEffectiveLevel() == logging.DEBUG
 
+    init_logging(logger)
+
     if not param_decls:
         param_decls = ("--verbose", "-v")
 
     kwargs.setdefault("metavar", "LVL")
     kwargs.setdefault("expose_value", False)
-    kwargs.setdefault("help", "Increase verbosity")
+    kwargs.setdefault("help", "Increase verbosity.")
     kwargs["is_flag"] = True
     kwargs["flag_value"] = True
     kwargs["default"] = False
@@ -160,8 +165,10 @@ def verbose_option(logger: logging.Logger, *param_decls: str, **kwargs: t.Any) -
 def verbosity_option(logger: logging.Logger, *param_decls: str, **kwargs: t.Any) -> t.Callable[[FC], FC]:
     """Adds a configurable verbosity option.
 
-    Output is handled by the given logger. The logger must be passed to `clickext.init_logging` before using the
-    decorator. Available verbosity levels are (from least to most verbose):
+    Output is handled by the given logger. The `--verbosity` flag should be passed before any other eager options to
+    ensure the desired verbosity level is set before the other options are evaluated. This option initializes the
+    logging environment so it is not necessary to call `log.init_logging` with the logger when this option is used.
+    Available verbosity levels are (from least to most verbose):
 
         - "QUIET"
         - "CRITICAL"
@@ -182,13 +189,15 @@ def verbosity_option(logger: logging.Logger, *param_decls: str, **kwargs: t.Any)
         logger.setLevel(getattr(logging, value.upper()))
         logging.raiseExceptions = logger.getEffectiveLevel() == logging.DEBUG
 
+    init_logging(logger, kwargs.get("default", "INFO"))
+
     if not param_decls:
         param_decls = ("--verbosity", "-v")
 
     kwargs.setdefault("default", "INFO")
     kwargs.setdefault("metavar", "LVL")
     kwargs.setdefault("expose_value", False)
-    kwargs.setdefault("help", "Specify verbosity level")
+    kwargs.setdefault("help", "Specify verbosity level.")
     kwargs["is_eager"] = True
     kwargs["type"] = click.Choice(["QUIET", "CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"], case_sensitive=False)
     kwargs["callback"] = callback

@@ -93,7 +93,7 @@ class ConsoleHandler(logging.Handler):
             self.handleError(record)
 
 
-def init_logging(logger: logging.Logger, level: int = logging.INFO) -> logging.Logger:
+def init_logging(logger: logging.Logger, level: int | str = logging.INFO) -> logging.Logger:
     """Initialize program logging.
 
     Configures the given logger for console output, with `ConsoleHandler` and `ConsoleFormatter`. `click.ClickException`
@@ -108,6 +108,9 @@ def init_logging(logger: logging.Logger, level: int = logging.INFO) -> logging.L
         level: The default log level to print (default: `logging.INFO`).
     """
     logger.handlers.clear()
+
+    if isinstance(level, str):
+        level = logging.getLevelName(level.upper())
 
     if not hasattr(logging, QUIET_LEVEL_NAME):
         logging.addLevelName(QUIET_LEVEL_NUM, QUIET_LEVEL_NAME)
