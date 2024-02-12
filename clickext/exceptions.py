@@ -30,12 +30,22 @@ def patch_exceptions(logger: logging.Logger) -> None:
 def _click_exception_patch(self: click.ClickException, file: t.Optional[t.IO] = None) -> None:
     """Patch for `click.ClickException.show` that sends output a logger."""
     file = click.get_text_stream("stderr") if file is None else file
-    self.logger.error(self.format_message())  # pyright: ignore[reportAttributeAccessIssue]
+    exc_info = (
+        self
+        if self.logger.getEffectiveLevel() == logging.DEBUG  # pyright: ignore[reportAttributeAccessIssue]
+        else None
+    )
+    self.logger.error(self.format_message(), exc_info=exc_info)  # pyright: ignore[reportAttributeAccessIssue]
 
 
 def _click_usage_error_patch(self: click.UsageError, file: t.Optional[t.IO] = None) -> None:
     """Patch for `click.UsageError.show` that sends output a logger."""
     file = click.get_text_stream("stderr") if file is None else file
+    exc_info = (
+        self
+        if self.logger.getEffectiveLevel() == logging.DEBUG  # pyright: ignore[reportAttributeAccessIssue]
+        else None
+    )
     hint = ""
 
     if self.ctx is not None:
@@ -46,4 +56,4 @@ def _click_usage_error_patch(self: click.UsageError, file: t.Optional[t.IO] = No
 
         click.echo(f"{self.ctx.get_usage()}\n{hint}", file=file, color=None)
 
-    self.logger.error(self.format_message())  # pyright: ignore[reportAttributeAccessIssue]
+    self.logger.error(self.format_message(), exc_info=exc_info)  # pyright: ignore[reportAttributeAccessIssue]

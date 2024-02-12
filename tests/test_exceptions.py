@@ -22,6 +22,23 @@ def test__click_exception_patch(capsys: pytest.CaptureFixture, logger: logging.L
     assert capsys.readouterr().err == "Error: test\n"
 
 
+@pytest.mark.parametrize("level", [logging.DEBUG, logging.INFO])
+def test__click_exception_patch_traceback(capsys: pytest.CaptureFixture, logger: logging.Logger, level: int):
+    init_logging(logger, level)
+
+    try:
+        raise click.ClickException("test")
+    except click.ClickException as exc:
+        exc.show()
+
+    err = capsys.readouterr().err
+
+    if level == logging.DEBUG:
+        assert err.startswith("Error: test\nTraceback (most recent call last):")
+    else:
+        assert err == "Error: test\n"
+
+
 @pytest.mark.parametrize("has_help", [True, False])
 @pytest.mark.parametrize("has_context", [True, False])
 def test__click_usage_error_patch(
@@ -44,3 +61,20 @@ def test__click_usage_error_patch(
     _click_usage_error_patch(click.UsageError("test", ctx))
 
     assert capsys.readouterr().err == f"{usage_message}Error: test\n"
+
+
+@pytest.mark.parametrize("level", [logging.DEBUG, logging.INFO])
+def test__click_usage_error_patch_traceback(capsys: pytest.CaptureFixture, logger: logging.Logger, level: int):
+    init_logging(logger, level)
+
+    try:
+        raise click.UsageError("test")
+    except click.UsageError as exc:
+        exc.show()
+
+    err = capsys.readouterr().err
+
+    if level == logging.DEBUG:
+        assert err.startswith("Error: test\nTraceback (most recent call last):")
+    else:
+        assert err == "Error: test\n"
