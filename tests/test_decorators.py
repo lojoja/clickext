@@ -1,153 +1,239 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 
 import logging
+from pathlib import Path
+import typing as t
 
 import click
 from click.testing import CliRunner
 import pytest
-import pytest_mock
+from pytest_mock import MockerFixture
 
-from clickext import ClickextCommand, init_logging, config_option, verbose_option, verbosity_option
+from clickext.core import ClickextCommand
+from clickext.decorators import config_option, verbose_option, verbosity_option
+from clickext.log import QUIET_LEVEL_NAME, QUIET_LEVEL_NUM
 
 
-@pytest.mark.parametrize(
-    ["is_file", "require_config", "output"],
-    [
-        (True, False, "Error: Failed to read configuration file\n"),
-        (False, True, "Error: Configuration file not found\n"),
-        (False, False, "Config is None\n"),
-    ],
-    ids=["read error", "config not found (required)", "config not found (not required)"],
-)
-def test_config_error(mocker: pytest_mock.MockerFixture, is_file: bool, require_config: bool, output: str):
-    mocker.patch("clickext.decorators.Path.is_file", return_value=is_file)
-    mocker.patch("clickext.decorators.Path.read_text", side_effect=OSError)
+@pytest.mark.parametrize("param_type_str", [True, False])
+@pytest.mark.parametrize("error", [True, False])
+def test_config_option_file_read(mocker: MockerFixture, config: dict[str, Path], error: bool, param_type_str: bool):
+    opts = {"type": click.STRING} if param_type_str else {}
+    expected_code = 0
+    expected_output = ""
+
+    if error:
+        mocker.patch("clickext.decorators.Path.read_text", side_effect=OSError)
+        expected_code = 1
+        expected_output = "Error: Failed to read configuration file\n"
 
     @click.command(cls=ClickextCommand)
-    @config_option("config.json", require_config=require_config)
-    @click.pass_obj
-    def cmd(obj):
-        click.echo(f"Config is {obj}")
+    @config_option(config["json_valid"], **opts)  # type:ignore
+    def cmd(): ...
 
     runner = CliRunner()
     result = runner.invoke(cmd)
 
-    assert result.output == output
+    assert result.exit_code == expected_code
+    assert result.output == expected_output
 
 
-@pytest.mark.parametrize(
-    ["file", "source", "output"],
-    [
-        ("config.json", '{"foo": "bar"}', "Config foo is bar\n"),
-        ("config.json", '{"foo":"bar}', "Error: Failed to parse configuration file\n"),
-        ("config.toml", 'foo="bar"', "Config foo is bar\n"),
-        ("config.toml", 'foo="bar', "Error: Failed to parse configuration file\n"),
-        ("config.yaml", "foo: bar", "Config foo is bar\n"),
-        ("config.yaml", 'foo: "bar', "Error: Failed to parse configuration file\n"),
-        ("config.yml", "foo: bar", "Config foo is bar\n"),
-        ("config.yml", 'foo: "bar', "Error: Failed to parse configuration file\n"),
-        ("config.conf", "foo", 'Error: Unknown configuration file format ".conf"\n'),
-    ],
-    ids=[
-        "json (valid)",
-        "json (invalid)",
-        "toml (valid)",
-        "toml (invalid)",
-        "yaml (valid)",
-        "yaml (invalid)",
-        "yml (valid)",
-        "yml (invalid)",
-        "unknown format",
-    ],
-)
-def test_config_parse(mocker: pytest_mock.MockerFixture, file: str, source: str, output: str):
-    mocker.patch("clickext.decorators.Path.is_file", return_value=bool(source))
-    mocker.patch("clickext.decorators.Path.read_text", return_value=source)
+@pytest.mark.parametrize("exists", [True, False])
+@pytest.mark.parametrize("required", [True, False])
+def test_config_option_file_required(config: dict[str, Path], required: bool, exists: bool):
+    file = config["json_valid"] if exists else config["json_valid"] / "x"
+    expected_code = 0
+    expected_output = ""
+
+    if required and not exists:
+        expected_code = 1
+        expected_output = "Error: Configuration file not found\n"
+
+    @click.command(cls=ClickextCommand)
+    @config_option(file, require_config=required)
+    def cmd(): ...
+
+    runner = CliRunner()
+    result = runner.invoke(cmd)
+
+    assert result.exit_code == expected_code
+    assert result.output == expected_output
+
+
+@pytest.mark.parametrize("default", [True, False])
+def test_config_option_param_decls(config: dict[str, Path], default: bool):
+    param_decls = tuple() if default else ("-o", "--override")
+
+    @click.command(cls=ClickextCommand)
+    @config_option(config["json_invalid"], *param_decls)
+    @click.pass_obj
+    def cmd(obj: dict[str, str]):
+        click.echo(obj)
+
+    runner = CliRunner()
+    result = runner.invoke(cmd, ["-c" if default else "-o", str(config["json_valid"])])
+
+    assert result.exit_code == 0
+    assert result.output == "{'key': 'default_value'}\n"
+
+
+@pytest.mark.parametrize("valid", [True, False])
+@pytest.mark.parametrize("config_format", ["ini", "json", "toml", "yaml"])
+def test_config_option_parse(config: dict[str, Path], config_format: str, valid: bool):
+    file = config[f"{config_format}_{'' if valid else 'in'}valid"]
+    expected_code = 0
+    expected_output = ""
+
+    if config_format == "ini":
+        expected_code = 1
+        expected_output = 'Error: Unknown configuration file format ".ini"\n'
+    elif not valid:
+        expected_code = 1
+        expected_output = "Error: Failed to parse configuration file\n"
 
     @click.command(cls=ClickextCommand)
     @config_option(file)
-    @click.pass_obj
-    def cmd(obj):
-        click.echo(f"Config foo is {obj['foo']}")
+    def cmd(): ...
 
     runner = CliRunner()
     result = runner.invoke(cmd)
 
-    assert result.output == output
+    assert result.exit_code == expected_code
+    assert result.output == expected_output
 
 
-def test_config_processor(mocker: pytest_mock.MockerFixture):
-    mocker.patch("clickext.decorators.Path.is_file", return_value=True)
-    mocker.patch("clickext.decorators.Path.read_text", return_value='{"foo": 100}')
-
-    def config_processor(data):
-        data["foo"] = data["foo"] * 5
+@pytest.mark.parametrize("processor", [True, False])
+def test_config_option_processor(config: dict[str, Path], processor: bool):
+    def callback(data: dict[str, str]) -> dict[str, str]:
+        data["key"] = "processed_value"
         return data
 
     @click.command(cls=ClickextCommand)
-    @config_option("config.json", processor=config_processor)
+    @config_option(config["json_valid"], processor=callback if processor else None)
     @click.pass_obj
-    def cmd(obj):
-        click.echo(f"Processed config value is {obj['foo']}")
+    def cmd(obj: dict[str, str]):
+        click.echo(obj)
 
     runner = CliRunner()
     result = runner.invoke(cmd)
 
-    assert result.output == "Processed config value is 500\n"
+    assert result.exit_code == 0
+    assert result.output == "{'key': '" + ("processed" if processor else "default") + "_value'}\n"
 
 
-@pytest.mark.parametrize(
-    ["args", "level", "output"],
-    [([], logging.INFO, "visible message\n"), (["--verbose"], logging.DEBUG, "Debug: visible message\n")],
-    ids=["not verbose", "verbose"],
-)
-def test_verbose(
-    logger: logging.Logger, args: list[str], level: int, output: str
-):  # pylint: disable=redefined-outer-name
-    init_logging(logger)
-
+@pytest.mark.parametrize("verbose", [True, False])
+def test_verbose_option_level(logger: logging.Logger, verbose: bool):
     @click.command(cls=ClickextCommand)
     @verbose_option(logger)
     def cmd():
-        logger.log(level, "visible message")
-        logger.log(level - 5, "hidden message")
+        logger.debug("msg")
+        logger.info("msg")
 
     runner = CliRunner()
-    result = runner.invoke(cmd, args)
+    result = runner.invoke(cmd, "-v" if verbose else None)
 
-    assert logging.raiseExceptions == (level == logging.DEBUG)
-    assert logger.getEffectiveLevel() == level
-    assert result.output == output
+    assert hasattr(logging, QUIET_LEVEL_NAME)  # test that `log.init_logging` was called
+    assert logging.raiseExceptions is verbose
+    assert logger.getEffectiveLevel() == logging.DEBUG if verbose else logging.INFO
+
+    assert result.exit_code == 0
+    assert result.output == "Debug: msg\nmsg\n" if verbose else "msg\n"
 
 
-@pytest.mark.parametrize(
-    ["args", "level", "output"],
-    [
-        (["--verbosity", "debug"], logging.DEBUG, "Debug: visible message\n"),
-        ([], logging.INFO, "visible message\n"),
-        (["--verbosity", "INFO"], logging.INFO, "visible message\n"),
-        (["--verbosity", "WARNING"], logging.WARNING, "Warning: visible message\n"),
-        (["--verbosity", "ERROR"], logging.ERROR, "Error: visible message\n"),
-        (["--verbosity", "critical"], logging.CRITICAL, "Critical: visible message\n"),
-        (["--verbosity", "QUIET"], 1000, ""),
-        (["--verbosity", "xyz"], logging.INFO, "Invalid value for '--verbosity'"),
-    ],
-    ids=["debug", "info (default)", "info", "warning", "error", "critical", "quiet", "invalid"],
-)
-def test_verbosity(
-    logger: logging.Logger, args: list[str], level: int, output: str
-):  # pylint: disable=redefined-outer-name
-    init_logging(logger)
+@pytest.mark.parametrize("default", [True, False])
+def test_verbose_option_param_decls(logger: logging.Logger, default: bool):
+    param_decls = tuple() if default else ("-o", "--override")
+
+    @click.command(cls=ClickextCommand)
+    @verbose_option(logger, *param_decls)
+    def cmd():
+        logger.debug("msg")
+
+    runner = CliRunner()
+    result = runner.invoke(cmd, "-v" if default else "-o")
+
+    assert result.exit_code == 0
+    assert result.output == "Debug: msg\n"
+
+
+@pytest.mark.parametrize("default", [True, False])
+def test_verbosity_option_default(logger: logging.Logger, default: bool):
+    opts = {} if default else {"default": "ERROR"}
+
+    @click.command(cls=ClickextCommand)
+    @verbosity_option(logger, **opts)
+    def cmd():
+        logger.info("msg")
+
+    runner = CliRunner()
+    result = runner.invoke(cmd)
+
+    assert logger.level == logging.INFO if default else logging.ERROR
+
+    assert result.exit_code == 0
+    assert result.output == ("msg\n" if default else "")
+
+
+@pytest.mark.parametrize("level", [QUIET_LEVEL_NAME, "CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "XYZ"])
+def test_verbosity_option_level(logger: logging.Logger, level: t.Optional[str]):
+    cmd_msg_level = logging.INFO
+    expected_code = 0
+    expected_output = "msg\n"
+
+    if level == "XYZ":
+        expected_code = 2
+        expected_output = (
+            "Usage: cmd [OPTIONS]\n"
+            "Try 'cmd --help' for help.\n\n"
+            "Error: Invalid value for '--verbosity' / '-v': "
+            "'XYZ' is not one of 'QUIET', 'CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'.\n"
+        )
+    elif level == QUIET_LEVEL_NAME:
+        expected_output = ""
+    elif level is not None and level != "INFO":
+        cmd_msg_level = logging.getLevelName(level)
+        expected_output = f"{level.title()}: msg\n"
 
     @click.command(cls=ClickextCommand)
     @verbosity_option(logger)
     def cmd():
-        logger.log(level, "visible message")
-        logger.log(level - 5, "hidden message")
+        logger.log(cmd_msg_level, "msg")
 
     runner = CliRunner()
-    result = runner.invoke(cmd, args)
+    result = runner.invoke(cmd, [] if level is None else ["-v", level])
 
-    assert logging.raiseExceptions == (level == logging.DEBUG)
-    assert logger.getEffectiveLevel() == level
-    assert output in result.output
+    assert hasattr(logging, QUIET_LEVEL_NAME)  # test that `log.init_logging` was called
+    assert logging.raiseExceptions is (level == "DEBUG")
+    assert logger.getEffectiveLevel() == (QUIET_LEVEL_NUM if level == QUIET_LEVEL_NAME else cmd_msg_level)
+
+    assert result.exit_code == expected_code
+    assert result.output == expected_output
+
+
+@pytest.mark.parametrize("level", ["DEBUG", "debug"])
+def test_verbosity_option_level_case_insensitive(logger: logging.Logger, level: str):
+    @click.command(cls=ClickextCommand)
+    @verbosity_option(logger)
+    def cmd():
+        logger.debug("msg")
+
+    runner = CliRunner()
+    result = runner.invoke(cmd, ["-v", level])
+
+    assert result.exit_code == 0
+    assert result.output == "Debug: msg\n"
+
+
+@pytest.mark.parametrize("default", [True, False])
+def test_verbosity_option_param_decls(logger: logging.Logger, default: bool):
+    param_decls = tuple() if default else ("-o", "--override")
+
+    @click.command(cls=ClickextCommand)
+    @verbosity_option(logger, *param_decls)
+    def cmd():
+        logger.debug("msg")
+
+    runner = CliRunner()
+    result = runner.invoke(cmd, ["-v" if default else "-o", "DEBUG"])
+
+    assert result.exit_code == 0
+    assert result.output == "Debug: msg\n"

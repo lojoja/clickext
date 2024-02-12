@@ -1,6 +1,7 @@
 # pylint: disable=missing-module-docstring,missing-function-docstring
 
 import logging
+from pathlib import Path
 import typing as t
 
 import click
@@ -41,3 +42,34 @@ def logger_fixture() -> t.Generator[logging.Logger, None, None]:
 
     logger.handlers.clear()
     logger.setLevel(logging.NOTSET)
+
+
+@pytest.fixture(name="config", scope="session")
+def config_fixture(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Path]:
+    """Creates valid and invalid configuration files for tests.
+
+    The fixture value is a mapping of "<type>_<validity>" string descriptors to file paths, e.g,
+    `{"json_valid": Path("/path/to/valid.json")}`
+    """
+    data = {
+        "ini_valid": "x",
+        "ini_invalid": "x",
+        "json_valid": '{"key": "default_value"}',
+        "json_invalid": '{"key": "default_value}',
+        "toml_valid": 'key = "default_value"',
+        "toml_invalid": 'key = "default_value',
+        "yaml_valid": "key: default_value",
+        "yaml_invalid": "key: @default_value",
+    }
+
+    files = {}
+
+    tmp_dir = tmp_path_factory.getbasetemp()
+
+    for descriptor, content in data.items():
+        ext, name = descriptor.split("_")
+        file = tmp_dir / f"{name}.{ext}"
+        file.write_text(content, encoding="utf8")
+        files[descriptor] = file
+
+    return files
