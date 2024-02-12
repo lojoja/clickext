@@ -82,7 +82,7 @@ def config_option(
         if value.is_file():
             try:
                 raw_text = value.read_text(encoding="utf8")
-            except IOError as exc:
+            except OSError as exc:
                 raise click.ClickException("Failed to read configuration file") from exc
         elif require_config:
             raise click.ClickException("Configuration file not found")

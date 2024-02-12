@@ -21,7 +21,7 @@ from clickext import ClickextCommand, init_logging, config_option, verbose_optio
 )
 def test_config_error(mocker: pytest_mock.MockerFixture, is_file: bool, require_config: bool, output: str):
     mocker.patch("clickext.decorators.Path.is_file", return_value=is_file)
-    mocker.patch("clickext.decorators.Path.read_text", side_effect=IOError)
+    mocker.patch("clickext.decorators.Path.read_text", side_effect=OSError)
 
     @click.command(cls=ClickextCommand)
     @config_option("config.json", require_config=require_config)
