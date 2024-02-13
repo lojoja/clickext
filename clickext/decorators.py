@@ -47,18 +47,18 @@ def config_option(
 
     Configuration files must be a JSON, TOML, or YAML file. The file extension determines the file format:
 
-    JSON:
+        - JSON:
 
-        - .json
+            - .json
 
-    TOML:
+        - TOML:
 
-        - .toml
+            - .toml
 
-    YAML:
+        - YAML:
 
-        - .yaml
-        - .yml
+            - .yaml
+            - .yml
 
     The config option itself is always optional, however setting `require_config` to `True` will prevent the program
     starting if a configuration file is not present. If a configuration file is missing, is not required, and a
@@ -69,16 +69,14 @@ def config_option(
     callback. It will also accept a `str` via the `click.STRING` parameter type if the program cannot use `click.Path`
     for some reason.
 
-    Arguments:
-        file: The default configuration file location.
-        param_decls: One or more option names. Defaults to "--config / -c".
-        processor: An optional callable that receives the parsed data and prepares it per the program's specifications.
-                   This callable must accept a `None` value and return the prepared data or object.
-        require_config: Whether a configuration file is required to start the program.
+    :param file: The default configuration file location.
+    :param param_decls: One or more option names. (Default: "--config / -c").
+    :param processor: An optional callable that receives the parsed config file and prepares it per the program's
+    specifications. This callable must accept a `None` value and return the prepared data or object.
+    :param require_config: Whether a configuration file is required to start the program.
 
-    Raises:
-        click.ClickException: When the configuration file 1) is required and doesn't exist, 2) cannot be read,
-                              3) cannot be parsed, or 4) is an unknown format.
+    :raises click.ClickException: When the configuration file 1) is required and doesn't exist, 2) cannot be read,
+    3) cannot be parsed, or 4) is an unknown format.
     """
 
     def callback(
@@ -133,27 +131,32 @@ def config_option(
 
 
 def verbose_option(
-    logger: logging.Logger, *param_decls: str, styles: t.Optional[dict[str, Styles]] = None, **kwargs: t.Any
+    logger: logging.Logger,
+    *param_decls: str,
+    root_handlers: t.Optional[list[logging.Handler]] = None,
+    prefix_styles: t.Optional[dict[int, t.Optional[Styles]]] = None,
+    **kwargs: t.Any,
 ) -> t.Callable[[FC], FC]:
     """Adds a verbose option.
 
-    A flag to switch between standard output and verbose output. Output is handled by the given logger. The `--verbose`
-    flag should be passed before any other eager options to ensure the desired verbosity level is set before the other
-    options are evaluated. This option initializes the logging environment so it is not necessary to call
-    `log.init_logging` with the logger when this option is used.
+    A flag to switch between standard output and verbose output. The `--verbose` flag should be passed before any other
+    eager options to ensure the desired verbosity level is set before the other options are evaluated. This option
+    initializes the logging environment so it is not necessary to call `log.init_logging` when this option is used.
 
-    Arguments:
-        logger: The logger instance to modify.
-        param_decls: One or more option names. Defaults to "--verbose / -v".
-        styles: Log level prefix display styles. Styles are merged with the default styles. See: `log.ConsoleFormatter`.
-        kwargs: Extra arguments passed to `click.option`.
+    :param logger: The program logger. Required to initialize logging. See `clickext.log.init_logging`.
+    :param param_decls: One or more option names. (Default: "--verbose / -v").
+    :param root_handlers: Additional handlers to attach to the root logger. See `clickext.log.init_logging`.
+    :param prefix_styles: Log level prefix display styles. See: `clickext.log.ConsoleFormatter` for format.
+    :param kwargs: Extra arguments passed to `click.option`.
     """
 
     def callback(ctx: click.Context, param: click.Parameter, value: bool) -> None:  # pylint: disable=unused-argument
-        logger.setLevel(logging.DEBUG if value else logging.INFO)
-        logging.raiseExceptions = logger.getEffectiveLevel() == logging.DEBUG
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.DEBUG if value else logging.INFO)
+        logger.setLevel(root_logger.level)
+        logging.raiseExceptions = root_logger.level == logging.DEBUG
 
-    init_logging(logger, styles=styles)
+    init_logging(logger, root_handlers=root_handlers, prefix_styles=prefix_styles)
 
     if not param_decls:
         param_decls = ("--verbose", "-v")
@@ -171,14 +174,17 @@ def verbose_option(
 
 
 def verbosity_option(
-    logger: logging.Logger, *param_decls: str, styles: t.Optional[dict[str, Styles]] = None, **kwargs: t.Any
+    logger: logging.Logger,
+    *param_decls: str,
+    root_handlers: t.Optional[list[logging.Handler]] = None,
+    prefix_styles: t.Optional[dict[int, t.Optional[Styles]]] = None,
+    **kwargs: t.Any,
 ) -> t.Callable[[FC], FC]:
     """Adds a configurable verbosity option.
 
-    Output is handled by the given logger. The `--verbosity` flag should be passed before any other eager options to
-    ensure the desired verbosity level is set before the other options are evaluated. This option initializes the
-    logging environment so it is not necessary to call `log.init_logging` with the logger when this option is used.
-    Available verbosity levels are (from least to most verbose):
+    The `--verbosity` flag should be passed before any other eager options to ensure the desired verbosity level is set
+    before the other options are evaluated. This option initializes the logging environment so it is not necessary to
+    call `log.init_logging` when this option is used. Available verbosity levels are (from least to most verbose):
 
         - "QUIET"
         - "CRITICAL"
@@ -189,18 +195,20 @@ def verbosity_option(
 
     Levels are case-insensitive.
 
-    Arguments:
-        logger: The logger instance to modify.
-        param_decls: One or more option names. Defaults to "--verbosity / -v".
-        styles: Log level prefix display styles. Styles are merged with the default styles. See: `log.ConsoleFormatter`.
-        kwargs: Extra arguments passed to `click.option`.
+    :param logger: The program logger. Required to initialize logging. See `clickext.log.init_logging`.
+    :param param_decls: One or more option names. (Default: "--verbosity / -v").
+    :param root_handlers: Additional handlers to attach to the root logger. See `clickext.log.init_logging`.
+    :param prefix_styles: Log level prefix display styles. See: `clickext.log.ConsoleFormatter` for format.
+    :param kwargs: Extra arguments passed to `click.option`.
     """
 
     def callback(ctx: click.Context, param: click.Parameter, value: str) -> None:  # pylint: disable=unused-argument
-        logger.setLevel(getattr(logging, value.upper()))
+        root_logger = logging.getLogger()
+        root_logger.setLevel(getattr(logging, value.upper()))
+        logger.setLevel(root_logger.level)
         logging.raiseExceptions = logger.getEffectiveLevel() == logging.DEBUG
 
-    init_logging(logger, level=kwargs.get("default", "INFO"), styles=styles)
+    init_logging(logger, level=kwargs.get("default", "INFO"), root_handlers=root_handlers, prefix_styles=prefix_styles)
 
     if not param_decls:
         param_decls = ("--verbosity", "-v")

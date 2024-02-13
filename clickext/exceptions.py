@@ -13,14 +13,14 @@ import click
 def patch_exceptions(logger: logging.Logger) -> None:
     """Send click exception output to a logger.
 
-    By default, click exceptions print directly to the console and cannot be suppressed. Patched exceptions allow
-    complete control of the console output verbosity statically or dynamically at runtime with the `clickext.verbose`
-    and `clickext.verbosity` decorators.
+    Patches `click.ClickException`, `click.UsageError`, and their children to override the default behavior of printing
+    a message directly to the console. Instead, messages will be printed consistent with the current log level providing
+    greater control of the program output.
 
-    This function is called automatically by `clickext.init_logging`.
+    This function is called automatically by `clickext.init_logging` when the program logging is initialized. It should
+    not be called manually.
 
-    Arguments:
-        logger: The logger that click exception output should be routed to.
+    :param logger: The program logger. See `clickext.log.init_logging`.
     """
     click.ClickException.logger = logger  # pyright: ignore[reportAttributeAccessIssue]
     click.ClickException.show = _click_exception_patch

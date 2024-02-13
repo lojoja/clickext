@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import textwrap
+import sys
 import typing as t
 
 import click
@@ -15,7 +16,7 @@ import click
 from .exceptions import patch_exceptions
 
 if t.TYPE_CHECKING:
-    from logging import _FormatStyle
+    from types import TracebackType
 
 
 QUIET_LEVEL_NAME = "QUIET"
@@ -41,45 +42,52 @@ class Styles(t.TypedDict, total=False):
 class ConsoleFormatter(logging.Formatter):
     """Format log messages for the console.
 
-    Messages are prefixed with the log level. Prefixes can be styled with all options available to `click.style`. To
-    customize styling for one or more log levels, pass the desired options in `styles` when creating the formatter.
-    The styles passed will be merged with the defaults.
+     By default, "INFO" level messages are passed through as-is. All other levels are formatted with a level name
+     prefix: "{level:} {msg}".
 
-    Attributes:
-        styles: A mapping of log levels to prefix display styles.
+    :param prefix_styles: A mapping of log level numbers to `click.style` parameters used to style the prefix in the
+    formatted message. Style parameters are merged with the defaults unless styles is set to `None` in which case
+    messages for that level will not be prefixed with the level name. Unknown levels are silently ignored. Example:
+
+    ```
+    prefix_styles = {
+        logging.CRITICAL: {"fg": "purple"}, // fg=purple (overrides default)
+        logging.DEBUG: {"bg": "green"}, // fg=blue, bg=green (merged with default)
+        logging.ERROR: None // (will not prefix or style ERROR level messages)
+    }
+    ```
     """
 
-    _default_styles: dict[str, Styles] = {
-        "critical": {"fg": "red"},
-        "debug": {"fg": "blue"},
-        "error": {"fg": "red"},
-        "exception": {"fg": "red"},
-        "info": {},
-        "warning": {"fg": "yellow"},
+    _default_styles: dict[int, Styles] = {
+        logging.CRITICAL: {"fg": "red"},
+        logging.DEBUG: {"fg": "blue"},
+        logging.ERROR: {"fg": "red"},
+        logging.INFO: {},
+        logging.WARNING: {"fg": "yellow"},
     }
 
-    def __init__(  # pylint: disable=too-many-arguments
-        self,
-        fmt: t.Optional[str] = None,
-        datefmt: t.Optional[str] = None,
-        style: _FormatStyle = "%",
-        validate: bool = True,
-        *,
-        styles: t.Optional[dict[str, Styles]] = None,
-        **defaults: t.Optional[t.Mapping[str, t.Any]],
-    ):
-        super().__init__(fmt, datefmt, style, validate, defaults=defaults)
+    def __init__(self, *, prefix_styles: t.Optional[dict[int, t.Optional[Styles]]] = None):
+        super().__init__()
+        self.prefix_styles: dict[int, t.Optional[Styles]] = {}
 
-        styles = {k.lower(): v for k, v in styles.items()} if styles is not None else {}
-        self.styles = {k: v | styles.get(k, {}) for k, v in self._default_styles.items()}
+        if prefix_styles is None:
+            prefix_styles = {}
+
+        for level, style in self._default_styles.items():
+            style_override: t.Optional[Styles] = {}
+
+            if level in prefix_styles:
+                style_override = prefix_styles[level]
+
+            self.prefix_styles[level] = {} if style_override is None else {**style, **style_override}
 
     def format(self, record: logging.LogRecord) -> str:
         record.message = record.getMessage().strip()
 
-        style = self.styles.get(record.levelname.lower())
+        prefix_style = self.prefix_styles[record.levelno]
 
-        if style:
-            prefix = click.style(f"{record.levelname.title()}:", **style)
+        if prefix_style:
+            prefix = click.style(f"{record.levelname.title()}:", **prefix_style)
             record.message = f"{prefix} {record.message}"
             record.message = textwrap.indent(
                 record.message, " " * (len(record.levelname) + 2), lambda x: not x.startswith(prefix)
@@ -99,54 +107,83 @@ class ColorFormatter(ConsoleFormatter):
 class ConsoleHandler(logging.Handler):
     """Send log messages to the console.
 
-    Attributes:
-        stderr_levels: Log levels that should write to stderr instead of stdout.
+    Writes to stderr if the record level is `logging.WARNING` or greater, otherwise to stdout.
     """
-
-    stderr_levels = ["critical", "error", "exceptions", "warning"]
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
             msg = self.format(record)
-            use_stderr = record.levelname.lower() in self.stderr_levels
-            click.echo(msg, err=use_stderr)
+            click.echo(msg, err=record.levelno >= logging.WARNING)
         except Exception:  # pylint: disable=broad-except
             self.handleError(record)
 
 
 def init_logging(
-    logger: logging.Logger, level: int | str = logging.INFO, styles: t.Optional[dict[str, Styles]] = None
-) -> logging.Logger:
+    logger: logging.Logger,
+    level: int | str = logging.INFO,
+    root_handlers: t.Optional[list[logging.Handler]] = None,
+    prefix_styles: t.Optional[dict[int, t.Optional[Styles]]] = None,
+) -> None:
     """Initialize program logging.
 
-    Configures the given logger for console output, with `ConsoleHandler` and `ConsoleFormatter`. `click.ClickException`
-    and children are patched to send errors messages to the logger instead of printing to the console directly. If this
-    function is not called `click.ClickException` error messages cannot be suppressed by changing the logger level.
+    Configures the root logger to handle all log records and warnings issued with `warnings.warn` with `ConsoleHandler`
+    and the `ConsoleFormatter`. Existing handlers are removed from the root logger.
+
+    `click.ClickException`, `click.UsageError`, and their children are patched so their message output is sent to a
+    program logger instead of printing to the console directly so the output is formatted consistently and can
+    conditionally supressed based on the log level.
 
     An additional log level is added during initialization and assigned to `logging.QUIET`. This level can be used to
-    supress all console output.
+    suppress all log record output.
 
-    Arguments:
-        logger: The logger to configure.
-        level: The default log level to print (default: `logging.INFO`).
-        styles: Log level prefix display styles. Styles are merged with the default styles. See: `ConsoleFormatter`.
+    All informational messages must be sent to a logger since direct calls to `print`, `click.echo`, etc. cannot be
+    captured or formatted. Generic messages can be logged at the `INFO` level which, by default, outputs the message
+    as-received with no additional formatting. Non-informational messages that should always be displayed (e.g, the
+    calculated result of the program) should continue to be sent with `click.echo`.
+
+    :param logger: The program logger. Patched click exception messages will be sent to this logger in order to preserve
+    the source of the message. This will usually be the logger corresponding to the program's entrypoint module.
+    :param level: The log level to print (default: `logging.INFO`).
+    :param root_handlers: Additional handlers to attach to the root logger.
+    :param prefix_styles: Log level prefix display styles. See: `ConsoleFormatter` for format.
     """
-    logger.handlers.clear()
-
-    if isinstance(level, str):
-        level = logging.getLevelName(level.upper())
-
     if not hasattr(logging, QUIET_LEVEL_NAME):
         logging.addLevelName(QUIET_LEVEL_NUM, QUIET_LEVEL_NAME)
         setattr(logging, QUIET_LEVEL_NAME, QUIET_LEVEL_NUM)
 
-    handler = ConsoleHandler()
-    handler.setFormatter(ConsoleFormatter(styles=styles))
-    logger.addHandler(handler)
-    logger.setLevel(level)
+    if isinstance(level, str):
+        level = getattr(logging, level.upper(), logging.INFO)
 
-    logging.raiseExceptions = logger.getEffectiveLevel() == logging.DEBUG
+    if root_handlers is None:
+        root_handlers = []
+
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+
+    console_formatter = ConsoleFormatter(prefix_styles=prefix_styles)
+    console_handler = ConsoleHandler()
+    console_handler.setFormatter(console_formatter)
+
+    for handler in [console_handler, *root_handlers]:
+        root_logger.addHandler(handler)
+
+    root_logger.setLevel(level)
+
+    logging.captureWarnings(True)
+    logging.raiseExceptions = level == logging.DEBUG
+
+    logger.setLevel(level)
+    logger.propagate = True
 
     patch_exceptions(logger)
 
-    return logger
+    def excepthook(exc_type: type[BaseException], exc_value: BaseException, exc_traceback: TracebackType) -> None:
+        exc_info = (exc_type, exc_value, exc_traceback)
+
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(*exc_info)
+            return
+
+        logger.critical(str(exc_value), exc_info=exc_info if level == logging.DEBUG else None)
+
+    sys.excepthook = excepthook

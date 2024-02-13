@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+import sys
 import typing as t
 
 import click
@@ -11,11 +12,13 @@ import pytest
 @pytest.fixture(autouse=True)
 def reset_environment_fixture() -> t.Generator[None, None, None]:
     """Resets the global environment after each test."""
+    _sys_excepthook = sys.excepthook
     _click_exception_show = click.ClickException.show
     _click_usage_error_show = click.UsageError.show
 
     yield
 
+    sys.excepthook = _sys_excepthook
     click.ClickException.show = _click_exception_show
     click.UsageError.show = _click_usage_error_show
 
@@ -31,7 +34,10 @@ def reset_environment_fixture() -> t.Generator[None, None, None]:
         except KeyError:
             pass
 
+    logging.captureWarnings(False)
     logging.raiseExceptions = True
+    logging.getLogger().handlers.clear()
+    logging.getLogger().setLevel(logging.WARNING)
 
 
 @pytest.fixture(name="logger")
