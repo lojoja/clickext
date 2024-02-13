@@ -1,5 +1,7 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 import typing as t
@@ -12,6 +14,9 @@ from pytest_mock import MockerFixture
 from clickext.core import ClickextCommand
 from clickext.decorators import config_option, verbose_option, verbosity_option
 from clickext.log import QUIET_LEVEL_NAME, QUIET_LEVEL_NUM
+
+if t.TYPE_CHECKING:
+    from clickext.log import Styles
 
 
 @pytest.mark.parametrize("param_type_str", [True, False])
@@ -156,11 +161,27 @@ def test_verbose_option_param_decls(logger: logging.Logger, default: bool):
 
 
 @pytest.mark.parametrize("default", [True, False])
+def test_verbose_option_styles(logger: logging.Logger, default: bool):
+    styles: t.Optional[dict[str, Styles]] = None if default else {"info": {"fg": "red"}}
+    opts = {} if default else {"styles": styles}
+
+    @click.command(cls=ClickextCommand)
+    @verbose_option(logger, **opts)
+    def cmd(): ...
+
+    runner = CliRunner()
+    result = runner.invoke(cmd)
+
+    assert result.exit_code == 0
+    assert logger.handlers[0].formatter.styles["info"] == ({} if default else styles["info"])  # type: ignore
+
+
+@pytest.mark.parametrize("default", [True, False])
 def test_verbosity_option_default(logger: logging.Logger, default: bool):
     opts = {} if default else {"default": "ERROR"}
 
     @click.command(cls=ClickextCommand)
-    @verbosity_option(logger, **opts)
+    @verbosity_option(logger, **opts)  # type: ignore
     def cmd():
         logger.info("msg")
 
@@ -237,3 +258,19 @@ def test_verbosity_option_param_decls(logger: logging.Logger, default: bool):
 
     assert result.exit_code == 0
     assert result.output == "Debug: msg\n"
+
+
+@pytest.mark.parametrize("default", [True, False])
+def test_verbosity_option_styles(logger: logging.Logger, default: bool):
+    styles: t.Optional[dict[str, Styles]] = None if default else {"info": {"fg": "red"}}
+    opts = {} if default else {"styles": styles}
+
+    @click.command(cls=ClickextCommand)
+    @verbosity_option(logger, **opts)
+    def cmd(): ...
+
+    runner = CliRunner()
+    result = runner.invoke(cmd)
+
+    assert result.exit_code == 0
+    assert logger.handlers[0].formatter.styles["info"] == ({} if default else styles["info"])  # type: ignore

@@ -4,6 +4,8 @@ clickext.log
 Logging and console output handling for clickext programs.
 """
 
+from __future__ import annotations
+
 import logging
 import textwrap
 import typing as t
@@ -11,6 +13,9 @@ import typing as t
 import click
 
 from .exceptions import patch_exceptions
+
+if t.TYPE_CHECKING:
+    from logging import _FormatStyle
 
 
 QUIET_LEVEL_NAME = "QUIET"
@@ -37,13 +42,14 @@ class ConsoleFormatter(logging.Formatter):
     """Format log messages for the console.
 
     Messages are prefixed with the log level. Prefixes can be styled with all options available to `click.style`. To
-    customize styling for one or more log levels, set the desired options in `ConsoleFormatter.styles`.
+    customize styling for one or more log levels, pass the desired options in `styles` when creating the formatter.
+    The styles passed will be merged with the defaults.
 
     Attributes:
         styles: A mapping of log levels to prefix display styles.
     """
 
-    styles: dict[str, Styles] = {
+    _default_styles: dict[str, Styles] = {
         "critical": {"fg": "red"},
         "debug": {"fg": "blue"},
         "error": {"fg": "red"},
@@ -51,6 +57,21 @@ class ConsoleFormatter(logging.Formatter):
         "info": {},
         "warning": {"fg": "yellow"},
     }
+
+    def __init__(  # pylint: disable=too-many-arguments
+        self,
+        fmt: t.Optional[str] = None,
+        datefmt: t.Optional[str] = None,
+        style: _FormatStyle = "%",
+        validate: bool = True,
+        *,
+        styles: t.Optional[dict[str, Styles]] = None,
+        **defaults: t.Optional[t.Mapping[str, t.Any]],
+    ):
+        super().__init__(fmt, datefmt, style, validate, defaults=defaults)
+
+        styles = {k.lower(): v for k, v in styles.items()} if styles is not None else {}
+        self.styles = {k: v | styles.get(k, {}) for k, v in self._default_styles.items()}
 
     def format(self, record: logging.LogRecord) -> str:
         record.message = record.getMessage().strip()
@@ -93,7 +114,9 @@ class ConsoleHandler(logging.Handler):
             self.handleError(record)
 
 
-def init_logging(logger: logging.Logger, level: int | str = logging.INFO) -> logging.Logger:
+def init_logging(
+    logger: logging.Logger, level: int | str = logging.INFO, styles: t.Optional[dict[str, Styles]] = None
+) -> logging.Logger:
     """Initialize program logging.
 
     Configures the given logger for console output, with `ConsoleHandler` and `ConsoleFormatter`. `click.ClickException`
@@ -106,6 +129,7 @@ def init_logging(logger: logging.Logger, level: int | str = logging.INFO) -> log
     Arguments:
         logger: The logger to configure.
         level: The default log level to print (default: `logging.INFO`).
+        styles: Log level prefix display styles. Styles are merged with the default styles. See: `ConsoleFormatter`.
     """
     logger.handlers.clear()
 
@@ -117,7 +141,7 @@ def init_logging(logger: logging.Logger, level: int | str = logging.INFO) -> log
         setattr(logging, QUIET_LEVEL_NAME, QUIET_LEVEL_NUM)
 
     handler = ConsoleHandler()
-    handler.setFormatter(ConsoleFormatter())
+    handler.setFormatter(ConsoleFormatter(styles=styles))
     logger.addHandler(handler)
     logger.setLevel(level)
 

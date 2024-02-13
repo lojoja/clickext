@@ -1,5 +1,7 @@
 # pylint: disable=missing-module-docstring,missing-function-docstring
 
+from __future__ import annotations
+
 import logging
 import typing as t
 
@@ -14,6 +16,9 @@ from clickext.log import (
     QUIET_LEVEL_NUM,
     QUIET_LEVEL_NAME,
 )
+
+if t.TYPE_CHECKING:
+    from clickext.log import Styles
 
 
 def test_color_formatter_inherits_console_formatter():
@@ -45,6 +50,16 @@ def test_console_formatter_format(message: str, level: int, color: t.Optional[No
         expected = f"{expected}\nNoneType: None"
 
     assert ConsoleFormatter().format(record) == expected
+
+
+@pytest.mark.parametrize("default", [True, False])
+def test_console_formatter_merge_styles(default: bool):
+    styles: dict[str, Styles] = {"CRITICAL": {"bg": "green"}, "debug": {"fg": "purple"}, "undefined": {"fg": "red"}}
+    formatter = ConsoleFormatter(styles=None if default else styles)
+
+    assert formatter.styles["critical"] == {"fg": "red"} if default else {"fg": "red", "bg": "green"}
+    assert formatter.styles["debug"] == {"fg": "blue"} if default else {"fg": "purple"}
+    assert "undefined" not in formatter.styles
 
 
 @pytest.mark.parametrize("exc", [True, False])

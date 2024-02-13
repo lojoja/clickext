@@ -4,6 +4,8 @@ clickext.decorators
 Argument and option decorators for clickext commands.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from pathlib import Path
@@ -20,6 +22,9 @@ except ImportError:  # pragma: no cover
 
 from .core import ClickextCommand
 from .log import init_logging
+
+if t.TYPE_CHECKING:
+    from .log import Styles
 
 
 _AnyCallable: t.TypeAlias = t.Callable[..., t.Any]
@@ -127,7 +132,9 @@ def config_option(
     return click.option(*param_decls, **kwargs)
 
 
-def verbose_option(logger: logging.Logger, *param_decls: str, **kwargs: t.Any) -> t.Callable[[FC], FC]:
+def verbose_option(
+    logger: logging.Logger, *param_decls: str, styles: t.Optional[dict[str, Styles]] = None, **kwargs: t.Any
+) -> t.Callable[[FC], FC]:
     """Adds a verbose option.
 
     A flag to switch between standard output and verbose output. Output is handled by the given logger. The `--verbose`
@@ -138,6 +145,7 @@ def verbose_option(logger: logging.Logger, *param_decls: str, **kwargs: t.Any) -
     Arguments:
         logger: The logger instance to modify.
         param_decls: One or more option names. Defaults to "--verbose / -v".
+        styles: Log level prefix display styles. Styles are merged with the default styles. See: `log.ConsoleFormatter`.
         kwargs: Extra arguments passed to `click.option`.
     """
 
@@ -145,7 +153,7 @@ def verbose_option(logger: logging.Logger, *param_decls: str, **kwargs: t.Any) -
         logger.setLevel(logging.DEBUG if value else logging.INFO)
         logging.raiseExceptions = logger.getEffectiveLevel() == logging.DEBUG
 
-    init_logging(logger)
+    init_logging(logger, styles=styles)
 
     if not param_decls:
         param_decls = ("--verbose", "-v")
@@ -162,7 +170,9 @@ def verbose_option(logger: logging.Logger, *param_decls: str, **kwargs: t.Any) -
     return click.option(*param_decls, **kwargs)
 
 
-def verbosity_option(logger: logging.Logger, *param_decls: str, **kwargs: t.Any) -> t.Callable[[FC], FC]:
+def verbosity_option(
+    logger: logging.Logger, *param_decls: str, styles: t.Optional[dict[str, Styles]] = None, **kwargs: t.Any
+) -> t.Callable[[FC], FC]:
     """Adds a configurable verbosity option.
 
     Output is handled by the given logger. The `--verbosity` flag should be passed before any other eager options to
@@ -182,6 +192,7 @@ def verbosity_option(logger: logging.Logger, *param_decls: str, **kwargs: t.Any)
     Arguments:
         logger: The logger instance to modify.
         param_decls: One or more option names. Defaults to "--verbosity / -v".
+        styles: Log level prefix display styles. Styles are merged with the default styles. See: `log.ConsoleFormatter`.
         kwargs: Extra arguments passed to `click.option`.
     """
 
@@ -189,7 +200,7 @@ def verbosity_option(logger: logging.Logger, *param_decls: str, **kwargs: t.Any)
         logger.setLevel(getattr(logging, value.upper()))
         logging.raiseExceptions = logger.getEffectiveLevel() == logging.DEBUG
 
-    init_logging(logger, kwargs.get("default", "INFO"))
+    init_logging(logger, level=kwargs.get("default", "INFO"), styles=styles)
 
     if not param_decls:
         param_decls = ("--verbosity", "-v")
