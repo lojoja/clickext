@@ -4,19 +4,13 @@ clickext.log
 Logging and console output handling for clickext programs.
 """
 
-from __future__ import annotations
-
 import logging
 import textwrap
-import sys
 import typing as t
 
 import click
 
 from .exceptions import patch_exceptions
-
-if t.TYPE_CHECKING:
-    from types import TracebackType
 
 
 QUIET_LEVEL_NAME = "QUIET"
@@ -176,14 +170,3 @@ def init_logging(
     logger.propagate = True
 
     patch_exceptions(logger)
-
-    def excepthook(exc_type: type[BaseException], exc_value: BaseException, exc_traceback: TracebackType) -> None:
-        exc_info = (exc_type, exc_value, exc_traceback)
-
-        if issubclass(exc_type, KeyboardInterrupt):
-            sys.__excepthook__(*exc_info)
-            return
-
-        logger.critical(str(exc_value), exc_info=exc_info if level == logging.DEBUG else None)
-
-    sys.excepthook = excepthook

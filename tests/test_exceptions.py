@@ -1,19 +1,46 @@
 # pylint: disable=missing-module-docstring,missing-function-docstring
 
 import logging
+import sys
 
 import click
 import pytest
+from pytest_mock import MockerFixture
 
 from clickext.exceptions import patch_exceptions, _click_exception_patch, _click_usage_error_patch
 from clickext.log import init_logging
 
 
-def test_patch_exceptions(logger: logging.Logger):
+def test_patch_exceptions_click_exceptions(logger: logging.Logger):
     patch_exceptions(logger)
     assert click.ClickException.logger is logger  # pyright: ignore[reportAttributeAccessIssue]
     assert click.ClickException.show is _click_exception_patch
     assert click.UsageError.show is _click_usage_error_patch
+
+
+@pytest.mark.parametrize("level", [logging.DEBUG, logging.INFO])
+@pytest.mark.parametrize("exc_class", [ValueError, KeyboardInterrupt])
+def test_patch_exceptions_sys_excepthook(
+    capsys: pytest.CaptureFixture, mocker: MockerFixture, logger: logging.Logger, exc_class: type[Exception], level: int
+):
+    mock_excepthook = mocker.patch("sys.__excepthook__")
+
+    init_logging(logger, level)
+
+    exc = exc_class("msg")
+    exc_info = (type(exc), exc, exc.__traceback__)
+    sys.excepthook(*exc_info)
+
+    if exc_class is KeyboardInterrupt:
+        assert mock_excepthook.called_once_with(*exc_info)
+    else:
+        expected = "Critical: msg"
+
+        if level == logging.DEBUG:
+            expected = f"{expected}\nValueError: msg"
+
+        assert capsys.readouterr().err == f"{expected}\n"
+        assert mock_excepthook.not_called()
 
 
 def test__click_exception_patch(capsys: pytest.CaptureFixture, logger: logging.Logger):

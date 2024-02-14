@@ -41,24 +41,6 @@ class ClickextCommand(click.Command):
         self.mx_opts = mx_opts or []
         self.global_opts: dict[str, click.Option] = {}
 
-        # def invoke(self, ctx: click.Context) -> t.Any:
-        """Given a context, this invokes the command.
-
-        Uncaught non-click exceptions (excluding `EOFError`, `KeyboardInterrupt`, and `OSError`) are caught and
-        re-raised as a `click.ClickException` to prevent stack traces and other undesireable output leaking to the
-        console.
-
-        :param ctx: The current `click.Context` object.
-
-        :raises click.clickException: When an uncaught exception occurs during invocation.
-        """
-        # try:
-        #    return super().invoke(ctx)
-        # except (EOFError, KeyboardInterrupt, OSError, click.Abort, click.ClickException, click.exceptions.Exit):
-        #    raise
-        # except Exception as exc:  # pylint: disable=broad-except
-        #    raise click.ClickException(str(exc)) from exc
-
     def parse_args(self, ctx: click.Context, args: t.List[str]) -> t.List[str]:
         """Parse arguments and update the context.
 

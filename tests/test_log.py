@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import logging
-import sys
 import typing as t
 import warnings
 
 import click
 import pytest
-from pytest_mock import MockerFixture
 
 from clickext.log import (
     ColorFormatter,
@@ -179,28 +177,3 @@ def test_init_logging_root_logger_config(logger: logging.Logger, handlers: t.Opt
 
     if handlers:
         assert root_logger.handlers[1] is handlers[0]
-
-
-@pytest.mark.parametrize("level", [logging.DEBUG, logging.INFO])
-@pytest.mark.parametrize("exc_class", [ValueError, KeyboardInterrupt])
-def test_init_logging_sys_excepthook(
-    capsys: pytest.CaptureFixture, mocker: MockerFixture, logger: logging.Logger, exc_class: type[Exception], level: int
-):
-    mock_excepthook = mocker.patch("sys.__excepthook__")
-
-    init_logging(logger, level)
-
-    exc = exc_class("msg")
-    exc_info = (type(exc), exc, exc.__traceback__)
-    sys.excepthook(*exc_info)
-
-    if exc_class is KeyboardInterrupt:
-        assert mock_excepthook.called_once_with(*exc_info)
-    else:
-        expected = "Critical: msg"
-
-        if level == logging.DEBUG:
-            expected = f"{expected}\nValueError: msg"
-
-        assert capsys.readouterr().err == f"{expected}\n"
-        assert mock_excepthook.not_called()

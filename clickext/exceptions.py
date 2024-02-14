@@ -4,27 +4,45 @@ clickext.exceptions
 Logger-aware exception handling.
 """
 
+from __future__ import annotations
+
 import logging
+import sys
 import typing as t
 
 import click
 
+if t.TYPE_CHECKING:
+    from types import TracebackType
+
 
 def patch_exceptions(logger: logging.Logger) -> None:
-    """Send click exception output to a logger.
+    """Sends click and other uncaught exceptions to a logger.
 
-    Patches `click.ClickException`, `click.UsageError`, and their children to override the default behavior of printing
-    a message directly to the console. Instead, messages will be printed consistent with the current log level providing
-    greater control of the program output.
+    Patches `click.ClickException`, `click.UsageError`, their children, and `sys.excepthook` to override the default
+    behavior of printing a message directly to the console. Instead, messages will be printed consistent with the
+    current log level providing greater control of the program output. Exception information, including a traceback when
+    available, will be printed if the log level is `logging.DEBUG`.
 
     This function is called automatically by `clickext.init_logging` when the program logging is initialized. It should
     not be called manually.
 
     :param logger: The program logger. See `clickext.log.init_logging`.
     """
+
+    def excepthook(exc_type: type[BaseException], exc_value: BaseException, exc_traceback: TracebackType) -> None:
+        exc_info = (exc_type, exc_value, exc_traceback)
+
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(*exc_info)
+            return
+
+        logger.critical(str(exc_value), exc_info=exc_info if logger.level == logging.DEBUG else None)
+
     click.ClickException.logger = logger  # pyright: ignore[reportAttributeAccessIssue]
     click.ClickException.show = _click_exception_patch
     click.UsageError.show = _click_usage_error_patch
+    sys.excepthook = excepthook
 
 
 def _click_exception_patch(self: click.ClickException, file: t.Optional[t.IO] = None) -> None:
