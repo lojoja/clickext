@@ -1,6 +1,7 @@
 # pylint: disable=missing-module-docstring,missing-function-docstring,unused-argument
 
 from contextlib import nullcontext as does_not_raise
+import errno
 import typing as t
 
 import click
@@ -31,6 +32,56 @@ def test_clickext_command_help():
 
     assert result.exit_code == 0
     assert result.output == "Usage: cmd [OPTIONS]\n\nOptions:\n  --help  Show this message and exit.\n"
+
+
+@pytest.mark.parametrize(
+    "exc_class",
+    [
+        BrokenPipeError,  # used to identifiy the test case; actually tests OSError with errno=errno.EPIPE
+        click.Abort,
+        click.ClickException,
+        click.exceptions.Exit,
+        EOFError,
+        KeyboardInterrupt,
+        OSError,
+        RuntimeError,
+        TypeError,
+    ],
+)
+@pytest.mark.parametrize("catch_exceptions", [True, False])
+def test_clickext_command_invoke(catch_exceptions: bool, exc_class: type[Exception]):
+    if not catch_exceptions and exc_class in [OSError, RuntimeError, TypeError]:
+        context = pytest.raises(exc_class, match="msg")
+    else:
+        context = does_not_raise()
+
+    if exc_class in [EOFError, KeyboardInterrupt]:
+        expected_output = "\nAborted!\n"
+    elif exc_class == click.Abort:
+        expected_output = "Aborted!\n"
+    elif exc_class == click.exceptions.Exit:
+        expected_output = "msg\n"
+    elif exc_class == BrokenPipeError:  # click catches this and exits
+        expected_output = ""
+    else:
+        expected_output = "Error: msg\n"
+
+    @click.command(cls=ClickextCommand, catch_exceptions=catch_exceptions)
+    def cmd():
+        if exc_class == BrokenPipeError:
+            exc = OSError("msg")
+            exc.errno = errno.EPIPE
+            raise exc
+        raise exc_class("msg")
+
+    runner = CliRunner()
+
+    with context:
+        result = runner.invoke(cmd, catch_exceptions=False)
+
+    if isinstance(context, does_not_raise):
+        assert result.exit_code == 1
+        assert result.output == expected_output
 
 
 @pytest.mark.parametrize("opt2", ["", "--opt2"])

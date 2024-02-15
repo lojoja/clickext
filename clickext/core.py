@@ -4,6 +4,7 @@ clickext.core
 Extended functionality for the click library.
 """
 
+import errno
 import typing as t
 
 import click
@@ -25,6 +26,8 @@ class ClickextCommand(click.Command):
     :param aliases: Alternate names that should invoke this command.
     :param mx_opts: Groups of options that are mutually exclusive. Each item is a `tuple` of `click.Option` names that
     cannot be used together, e.g, `[("foo", "bar")]`.
+    :param catch_exceptions: Whether exceptions that occur during command invocation should be caught and re-raised as
+    `click.ClickExceptions`.
     :param attrs: Extra arguments passed to `click.Command`.
     """
 
@@ -33,13 +36,51 @@ class ClickextCommand(click.Command):
         name: t.Optional[str] = None,
         aliases: t.Optional[list[str]] = None,
         mx_opts: t.Optional[list[tuple[str]]] = None,
+        catch_exceptions: bool = True,
         **attrs: t.Any,
     ):
         super().__init__(name, **attrs)
 
+        self._catch_exceptions = catch_exceptions
         self.aliases = sorted(aliases or [])
         self.mx_opts = mx_opts or []
         self.global_opts: dict[str, click.Option] = {}
+
+    def invoke(self, ctx: click.Context) -> t.Any:
+        """Given a context, this invokes the command.
+
+        Catches most exceptions that occur during a command invocation and re-raises them as a `click.ClickException`.
+        This provides a simple way to handle all program errors in the command line context while allowing the code to
+        raise relevant exceptions in other contexts without using `try... except` blocks around code in every command to
+        prevent errors bubbling up. This behavior can be disabled by setting `catch_exceptions=False` in the command
+        definition.
+
+        The logging facility, if enabled by calling `clickext.init_logging`, will continue to format and handle
+        exception output according to the logging configuration whether this is enabled or not.
+
+        The following exceptions are not caught:
+
+            - `EOFError`
+            - `KeyboardInterrupt`
+            - `OSError` (when `OSError.errno == errno.EPIPE`)
+            - `click.Abort`
+            - `click.ClickException`
+            - `click.exceptions.Exit`
+
+        :param ctx: The current `click.Context` object.
+
+        :raises click.clickException: When an unlisted exception occurs during invocation.
+        """
+        try:
+            return super().invoke(ctx)
+        except (EOFError, KeyboardInterrupt, OSError, click.Abort, click.ClickException, click.exceptions.Exit) as exc:
+            if self._catch_exceptions and isinstance(exc, OSError) and exc.errno != errno.EPIPE:
+                raise click.ClickException(str(exc)) from exc
+            raise
+        except Exception as exc:  # pylint: disable=broad-except
+            if self._catch_exceptions:
+                raise click.ClickException(str(exc)) from exc
+            raise
 
     def parse_args(self, ctx: click.Context, args: t.List[str]) -> t.List[str]:
         """Parse arguments and update the context.
