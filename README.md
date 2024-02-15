@@ -103,8 +103,8 @@ Output:
 
 ```
 $ cmd --foo --bar
-Usage: cmd [OPTIONS]"
-Try 'cmd --help' for help."
+Usage: cmd [OPTIONS]
+Try 'cmd --help' for help.
 
 Error: Mutually exclusive options: --foo --bar
 ```
