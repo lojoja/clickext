@@ -258,49 +258,83 @@ class ClickextGroup(ClickextCommand, click.Group):
 
         return params
 
+    def make_parser(self, ctx: click.Context, globals_only: bool = False) -> click.OptionParser:
+        """Creates the underlying option parser for this command.
+
+        :param ctx: The current `click.Context` object.
+        :param globals_only: Whether the parser should be restricted to global options.
+        """
+        parser = click.OptionParser(ctx)
+        global_options = self.list_global_options()
+
+        for param in self.get_params(ctx):
+            if not globals_only or (globals_only and param in global_options):
+                param.add_to_parser(parser, ctx)
+
+        return parser
+
     def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
         """Parse arguments and update the context.
 
-        Global options are extracted and prepended to the argument list before parsing.
+        When global options are defined parsing will occur in two passes. The first pass parses global options
+        exclusively. Global options (and their values, if applicable) are extracted from the original args and the args
+        list is rebuilt with the global options at the beginning. The reconstructed args are then passed to the parent
+        to be processed by click normally.
 
         :param ctx: The current `click.Context` object.
         :param args: A list of arguments passed to the program.
         """
-        args = self.parse_global_args(args)
+        args = self.parse_global_args(ctx, args)
         return super().parse_args(ctx, args)
 
-    def parse_global_args(self, args: list[str]) -> list[str]:
-        """Parse global arguments and update the argument order.
+    def parse_global_args(self, ctx: click.Context, args: list[str]) -> list[str]:
+        """Parse global arguments and rebuild the args list.
 
-        Global options are extracted from the raw arguments and prepended to raw arguments to be consumed by the group.
-
+        :param ctx: The current `click.Context` object.
         :param args: A list of arguments passed to the program.
         """
-        grp_args: list[str] = []
-        cmd_args: list[str] = []
+        if not self.global_opts:
+            return args
 
-        next_idx = 0
-        for idx, arg in enumerate(args):
-            # skip arguments consumed as values for a global option
-            if idx != next_idx:
+        original_args = args.copy()
+        original_ctx_settings = {
+            "allow_extra_args": None,
+            "allow_interspersed_args": None,
+            "ignore_unknown_options": None,
+        }
+
+        # Save the original context settings to restore after parsing. Global parsing requires `ctx.allow_extra_args`,
+        # `ctx.allow_interspersed_args`, and `ctx.ignore_unknown_options` to be `True`.
+        for setting in original_ctx_settings:
+            original_ctx_settings[setting] = getattr(ctx, setting)
+            setattr(ctx, setting, True)
+
+        parser = self.make_parser(ctx, globals_only=True)
+
+        try:
+            param_order: list[click.Option]  # globals can only be `click.Option`
+            opts, args, param_order = parser.parse_args(args)  # type: ignore
+        finally:
+            for setting, value in original_ctx_settings.items():
+                setattr(ctx, setting, value)
+
+        global_args = []
+
+        for param in param_order:
+            global_args.append(param.opts[0])
+
+            if param.is_flag or not param.name:
                 continue
 
-            gopt = next((go for go in self.list_global_options() if arg in go.opts), None)
+            value = opts[param.name]
 
-            if gopt:
-                grp_args.append(arg)
+            if value and value != param.flag_value:  # pragma: no branch
+                if isinstance(value, tuple):
+                    global_args.extend(value)
+                else:
+                    global_args.append(value)
 
-                value_idx = idx + 1
-                if not gopt.is_flag and value_idx < len(args):
-                    if not args[value_idx].startswith("-") and args[value_idx] not in self.commands:
-                        grp_args.append(args[value_idx])
-                        next_idx += 1
-            else:
-                cmd_args.append(arg)
-
-            next_idx += 1
-
-        return [*grp_args, *cmd_args]
+        return global_args + args
 
     def add_command(  # pyright: ignore[reportIncompatibleMethodOverride]
         self, cmd: ClickextCommand, name: t.Optional[str] = None

@@ -235,20 +235,35 @@ def test_clickext_group_global_options_init(global_opts: t.Optional[list[str]]):
 @pytest.mark.parametrize("extra_opt", ["--extra-opt", "-e"])
 @pytest.mark.parametrize("opt", ["--opt", "-o"])
 @pytest.mark.parametrize(
-    "args_template",
+    ["args_template", "should_fail"],
     [
-        "{opt} cmd",
-        "{opt} cmd {extra_opt}",
-        "{opt} {extra_opt} cmd",
-        "{opt} {extra_opt} cmd {extra_opt}",
-        "{extra_opt} cmd {opt}",
-        "{extra_opt} cmd {opt} {extra_opt}",
-        "{extra_opt} cmd {extra_opt} {opt}",
-        "{extra_opt} {opt} cmd",
-        "{extra_opt} {opt} cmd {extra_opt}",
+        ["{opt}", True],
+        ["{opt} cmd", False],
+        ["{opt} cmd {extra_opt}", False],
+        ["{opt} {extra_opt} cmd", False],
+        ["{opt} {extra_opt} cmd {extra_opt}", False],
+        ["{extra_opt} cmd {opt}", False],
+        ["{extra_opt} cmd {opt} {extra_opt}", False],
+        ["{extra_opt} cmd {extra_opt} {opt}", False],
+        ["{extra_opt} {opt} cmd", False],
+        ["{extra_opt} {opt} cmd {extra_opt}", False],
+        ["cmd", False],
+        ["cmd {opt}", False],
+        ["cmd {opt} {extra_opt}", False],
+        ["cmd {extra_opt}", False],
+        ["cmd {extra_opt} {opt}", False],
     ],
 )
-def test_clickext_group_global_options_parse_flag(args_template: str, opt: str, extra_opt: str):
+def test_clickext_group_global_options_parse_flag(args_template: str, opt: str, extra_opt: str, should_fail: bool):
+    expected_code = 0
+    expected_output = ""
+
+    if should_fail:
+        expected_code = 2
+        expected_output = (
+            "Usage: grp [OPTIONS] COMMAND [ARGS]...\nTry 'grp --help' for help.\n\nError: Missing command.\n"
+        )
+
     @click.group(cls=ClickextGroup, global_opts=["opt"])
     @click.option("--opt", "-o", is_flag=True)
     @click.option("--extra-opt", "-e", is_flag=True)
@@ -261,41 +276,61 @@ def test_clickext_group_global_options_parse_flag(args_template: str, opt: str, 
     runner = CliRunner()
     result = runner.invoke(grp, args_template.format(opt=opt, extra_opt=extra_opt))
 
-    assert result.exit_code == 0
-    assert result.output == ""
+    assert result.exit_code == expected_code
+    assert result.output == expected_output
 
 
+@pytest.mark.parametrize("value", ["a", "x"])
 @pytest.mark.parametrize("extra_opt", ["--extra-opt", "-e"])
 @pytest.mark.parametrize("opt", ["--opt", "-o"])
 @pytest.mark.parametrize(
-    ["args_template", "should_fail"],
+    ["args_template", "failure_reason"],
     [
-        ("{opt} cmd", True),
-        ("{opt} cmd {extra_opt}", True),
-        ("{opt} {extra_opt} cmd", False),
-        ("{opt} {extra_opt} cmd {extra_opt}", False),
-        ("{opt} val cmd", False),
-        ("{opt} val cmd {extra_opt}", False),
-        ("{opt} val {extra_opt} cmd", False),
-        ("{opt} val {extra_opt} cmd {extra_opt}", False),
-        ("cmd {opt}", True),
-        ("cmd {opt} val", False),
-        ("cmd {opt} val {extra_opt}", False),
-        ("cmd {opt} {extra_opt}", True),
+        ("{opt}", "missing_argument"),
+        ("{opt} cmd", "missing_command"),
+        ("{opt} cmd {extra_opt}", "missing_command"),
+        ("{opt} {extra_opt} cmd", ""),
+        ("{opt} {extra_opt} cmd {extra_opt}", ""),
+        ("{opt} {val}", "missing_command"),
+        ("{opt} {val} cmd", ""),
+        ("{opt} {val} cmd {extra_opt}", ""),
+        ("{opt} {val} {extra_opt} cmd", ""),
+        ("{opt} {val} {extra_opt} cmd {extra_opt}", ""),
+        ("cmd", ""),
+        ("cmd {opt}", "missing_argument"),
+        ("cmd {opt} {extra_opt}", ""),
+        ("cmd {opt} {val}", ""),
+        ("cmd {opt} {val} {extra_opt}", ""),
+        ("cmd {extra_opt}", ""),
+        ("cmd {extra_opt} {opt}", "missing_argument"),
+        ("cmd {extra_opt} {opt} {val}", ""),
+        ("{extra_opt} cmd", ""),
+        ("{extra_opt} cmd {opt}", "missing_argument"),
+        ("{extra_opt} cmd {opt} {extra_opt}", ""),
+        ("{extra_opt} cmd {opt} {val}", ""),
+        ("{extra_opt} cmd {opt} {val} {extra_opt}", ""),
+        ("{extra_opt} cmd {extra_opt}", ""),
+        ("{extra_opt} cmd {extra_opt} {opt}", "missing_argument"),
+        ("{extra_opt} cmd {extra_opt} {opt} {val}", ""),
     ],
 )
-def test_clickext_group_global_options_parse_value(args_template: str, should_fail: bool, opt: str, extra_opt: str):
+def test_clickext_group_global_options_parse_value(
+    args_template: str, failure_reason: str, opt: str, extra_opt: str, value: str
+):
     expected_code = 0
     expected_output = ""
 
-    if should_fail:
+    if failure_reason:
         expected_code = 2
-        expected_output = (
-            "Usage: grp [OPTIONS] COMMAND [ARGS]...\nTry 'grp --help' for help.\n\nError: Missing command.\n"
-        )
+        if failure_reason == "missing_command":
+            expected_output = (
+                "Usage: grp [OPTIONS] COMMAND [ARGS]...\nTry 'grp --help' for help.\n\nError: Missing command.\n"
+            )
+        else:
+            expected_output = f"Error: Option '{opt}' requires an argument.\n"
 
     @click.group(cls=ClickextGroup, global_opts=["opt"])
-    @click.option("--opt", "-o", default="", type=click.STRING)
+    @click.option("--opt", "-o", default="a")
     @click.option("--extra-opt", "-e", is_flag=True)
     def grp(opt: str, extra_opt: bool): ...
 
@@ -304,7 +339,72 @@ def test_clickext_group_global_options_parse_value(args_template: str, should_fa
     def cmd(extra_opt: bool): ...
 
     runner = CliRunner()
-    result = runner.invoke(grp, args_template.format(opt=opt, extra_opt=extra_opt))
+    result = runner.invoke(grp, args_template.format(opt=opt, val=value, extra_opt=extra_opt))
+
+    assert result.exit_code == expected_code
+    assert result.output == expected_output
+
+
+@pytest.mark.parametrize("values", [("a", "b"), ("x", "y")])
+@pytest.mark.parametrize("extra_opt", ["--extra-opt", "-e"])
+@pytest.mark.parametrize("opt", ["--opt", "-o"])
+@pytest.mark.parametrize(
+    ["args_template", "failure_reason"],
+    [
+        ("{opt}", "missing_argument"),
+        ("{opt} cmd", "missing_argument"),
+        ("{opt} cmd {extra_opt}", "missing_command"),
+        ("{opt} {extra_opt} cmd", "missing_command"),
+        ("{opt} {extra_opt} cmd {extra_opt}", "missing_command"),
+        ("{opt} {val1} {val2}", "missing_command"),
+        ("{opt} {val1} {val2} cmd", ""),
+        ("{opt} {val1} {val2} cmd {extra_opt}", ""),
+        ("{opt} {val1} {val2} {extra_opt} cmd", ""),
+        ("{opt} {val1} {val2} {extra_opt} cmd {extra_opt}", ""),
+        ("cmd", ""),
+        ("cmd {opt}", "missing_argument"),
+        ("cmd {opt} {extra_opt}", "missing_argument"),
+        ("cmd {opt} {val1} {val2}", ""),
+        ("cmd {opt} {val1} {val2} {extra_opt}", ""),
+        ("cmd {extra_opt}", ""),
+        ("cmd {extra_opt} {opt}", "missing_argument"),
+        ("cmd {extra_opt} {opt} {val1} {val2}", ""),
+        ("{extra_opt} cmd", ""),
+        ("{extra_opt} cmd {opt}", "missing_argument"),
+        ("{extra_opt} cmd {opt} {extra_opt}", "missing_argument"),
+        ("{extra_opt} cmd {opt} {val1} {val2}", ""),
+        ("{extra_opt} cmd {opt} {val1} {val2} {extra_opt}", ""),
+        ("{extra_opt} cmd {extra_opt}", ""),
+        ("{extra_opt} cmd {extra_opt} {opt}", "missing_argument"),
+        ("{extra_opt} cmd {extra_opt} {opt} {val1} {val2}", ""),
+    ],
+)
+def test_clickext_group_global_options_parse_value_nargs(
+    args_template: str, failure_reason: str, opt: str, extra_opt: str, values: tuple[str, str]
+):
+    expected_code = 0
+    expected_output = ""
+
+    if failure_reason:
+        expected_code = 2
+        if failure_reason == "missing_command":
+            expected_output = (
+                "Usage: grp [OPTIONS] COMMAND [ARGS]...\nTry 'grp --help' for help.\n\nError: Missing command.\n"
+            )
+        else:
+            expected_output = f"Error: Option '{opt}' requires 2 arguments.\n"
+
+    @click.group(cls=ClickextGroup, global_opts=["opt"])
+    @click.option("--opt", "-o", default=("a", "b"), nargs=2)
+    @click.option("--extra-opt", "-e", is_flag=True)
+    def grp(opt: str, extra_opt: bool): ...
+
+    @grp.command(cls=ClickextCommand)
+    @click.option("--extra-opt", "-e", is_flag=True)
+    def cmd(extra_opt: bool): ...
+
+    runner = CliRunner()
+    result = runner.invoke(grp, args_template.format(opt=opt, val1=values[0], val2=values[1], extra_opt=extra_opt))
 
     assert result.exit_code == expected_code
     assert result.output == expected_output
