@@ -3,10 +3,8 @@ name: Tests
 on:
   push:
     branches: [main, dev]
-    paths-ignore: ["*.md", "*.sublime-project", "LICENSE"]
   pull_request:
     branches: [main, dev]
-    paths-ignore: ["*.md", "*.sublime-project", "LICENSE"]
   workflow_dispatch:
 
 jobs:
