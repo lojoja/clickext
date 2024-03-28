@@ -10,7 +10,7 @@
     {
       "files": ["*.sublime-project"],
       "options": {
-        "parser": "jsonc"
+        "parser": "json"
       }
     }
   ]
