@@ -296,7 +296,6 @@ class ClickextGroup(ClickextCommand, click.Group):
         if not self.global_opts:
             return args
 
-        original_args = args.copy()
         original_ctx_settings = {
             "allow_extra_args": None,
             "allow_interspersed_args": None,
