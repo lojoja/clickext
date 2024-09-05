@@ -12,9 +12,6 @@
 					"pylsp.plugins.pylint.executable": ".venv/bin/pylint"
 				}
 			},
-			"LSP-pyright": {
-				"settings": {}
-			},
 			"ltex-ls": {
 				"settings": {
 					"ltex.dictionary": {
