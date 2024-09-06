@@ -9,7 +9,7 @@ on:
     outputs:
       IS_PRERELEASE:
         description: Whether the build is a pre-release version.
-        value: ${{ jobs.build.outputs.IS_PRERELEASE == "true" }}
+        value: ${{ jobs.build.outputs.IS_PRERELEASE }}
       VERSION:
         description: The build version.
         value: ${{ jobs.build.outputs.VERSION }}
@@ -40,10 +40,10 @@ jobs:
       - name: Set build pre-release status
         id: set-build-is-prerelease
         run: |
-          pre="true"
+          pre=1
           if [[ ${{ steps.set-build-version.outputs.VERSION }} =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           then
-            pre="false"
+            pre=0
           fi
           echo "IS_PRERELEASE=$pre" >> $GITHUB_OUTPUT
       - name: Build with poetry

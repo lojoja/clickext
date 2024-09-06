@@ -35,7 +35,7 @@ jobs:
         with:
           target_commitish: ${{ github.sha }}
           tag_name: ${{ needs.build.outputs.VERSION }}
-          prerelease: ${{ needs.build.outputs.IS_PRERELEASE }}
+          prerelease: ${{ needs.build.outputs.IS_PRERELEASE == 1 }}
           draft: true
           files: dist/clickext-*
           fail_on_unmatched_files: true
