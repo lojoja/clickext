@@ -2,34 +2,24 @@ name: Release
 
 on:
   push:
-    tags:
-      - "[0-9]+.[0-9]+.[0-9]+"
-      - "[0-9]+.[0-9]+.[0-9]+a[0-9]+"
-      - "[0-9]+.[0-9]+.[0-9]+b[0-9]+"
-      - "[0-9]+.[0-9]+.[0-9]+rc[0-9]+"
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
+  style:
+    name: Style
+    uses: ./.github/workflows/style.yml
+  tests:
+    name: Tests
+    uses: ./.github/workflows/tests.yml
   build:
     name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
-      - name: Install poetry
-        run: pipx install poetry
-      - name: Set up python
-        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3
-        with:
-          python-version: "3.10"
-          cache: poetry
-      - name: Build with poetry
-        run: poetry build
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874
-        with:
-          path: ./dist
-  create-draft-release:
-    name: Create draft release
+    uses: ./.github/workflows/build.yml
+    needs: [style, tests]
+  release:
+    name: Create release
     runs-on: ubuntu-latest
     needs: [build]
     permissions:
@@ -37,20 +27,15 @@ jobs:
     steps:
       - name: Download build artifacts
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
-      - name: Identify prerelease
-        id: identify-prerelease
-        run: |
-          flag=""
-          if [[ ! ${{ github.ref_name }} =~ ^refs/tags/[0-9]+.[0-9]+.[0-9]+$ ]]
-          then
-            flag=" --prerelease"
-          fi
-          echo "PRERELEASE=$flag" >> $GITHUB_OUTPUT
-      - name: Create draft release
-        run: >
-          gh release create --draft${{ steps.identify-prerelease.outputs.PRERELEASE }}
-          --repo ${{ github.repository }}
-          ${{ github.ref_name }}
-          artifact/*
-        env:
-          GH_TOKEN: ${{ github.token }}
+        with:
+          name: dist
+          path: dist/
+      - name: Create release
+        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191
+        with:
+          target_commitish: ${{ github.sha }}
+          tag_name: ${{ needs.build.outputs.VERSION }}
+          prerelease: ${{ needs.build.outputs.IS_PRERELEASE }}
+          draft: true
+          files: dist/clickext-*
+          fail_on_unmatched_files: true
