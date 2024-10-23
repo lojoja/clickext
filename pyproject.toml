@@ -68,6 +68,9 @@ max-complexity = 15
 [tool.pylint.format]
 max-line-length = 120
 
+[tool.pylint.imports]
+allow-reexport-from-package = true
+
 [tool.pyright]
 ignore = [".venv/*", "dist/*"]
 pythonVersion = "3.10"
