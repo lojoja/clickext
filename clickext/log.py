@@ -84,7 +84,7 @@ class ConsoleFormatter(logging.Formatter):
             prefix = click.style(f"{record.levelname.title()}:", **prefix_style)
             record.message = f"{prefix} {record.message}"
             record.message = textwrap.indent(
-                record.message, " " * (len(record.levelname) + 2), lambda x: not x.startswith(prefix)
+                record.message, str(" " * (len(record.levelname) + 2)), lambda x: not x.startswith(prefix)
             )
 
         if record.exc_info:

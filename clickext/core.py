@@ -106,7 +106,7 @@ class ClickextCommand(click.Command):
         :raises click.UsageError: When mutually exclusive options have been passed.
         """
         for mx_opts in self.mx_opts:
-            passed = []
+            passed: list[str] = []
 
             for param in self.get_params(ctx):
                 if param.name in mx_opts and param.name in ctx.params and ctx.params[param.name] != param.default:
