@@ -1,16 +1,30 @@
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.poetry]
+[project]
 name = "clickext"
 version = "1.0.6a0"
 description = "Extended features for the Python click library"
+license = {text = "MIT"}
 readme = "README.md"
-license = "MIT"
-authors = ["lojoja <dev@lojoja.com>"]
+authors = [
+  { name = "lojoja", email = "<dev@lojoja.com>" }
+]
+requires-python = ">=3.10,<4"
+dependencies = [
+  "click==8.*",
+  "pyyaml==6.*",
+  "tomli==2.*"
+]
+dynamic = ["classifiers"]
+
+[project.urls]
 homepage = "https://github.com/lojoja/clickext"
 repository = "https://github.com/lojoja/clickext"
+"Bug Tracker" = "https://github.com/lojoja/clickext/issues"
+
+[tool.poetry]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
@@ -19,15 +33,6 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
 ]
-
-[tool.poetry.urls]
-"Bug Tracker" = "https://github.com/lojoja/clickext/issues"
-
-[tool.poetry.dependencies]
-python = "^3.10.0"
-click = "^8.0.0"
-pyyaml = "^6.0.0"
-tomli = "^2.0.1"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.0.0"
