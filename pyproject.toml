@@ -9,7 +9,7 @@ description = "Extended features for the Python click library"
 license = {text = "MIT"}
 readme = "README.md"
 authors = [
-  { name = "lojoja", email = "<dev@lojoja.com>" }
+  { name = "lojoja", email = "dev@lojoja.com" }
 ]
 requires-python = ">=3.10,<4"
 dependencies = [
