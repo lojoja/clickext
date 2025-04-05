@@ -46,7 +46,6 @@ pytest-mock = "^3.12.0"
 include = '\.pyi?$'
 line-length = 120
 skip-magic-trailing-comma = true
-target_version = ["py310", "py311"]
 
 [tool.coverage.run]
 source = ["clickext"]
