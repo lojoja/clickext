@@ -1,0 +1,38 @@
+name: Format
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - .github/workflows/format.yml
+      - conftest.py
+      - poetry.lock
+      - pyproject.toml
+      - clickext/**
+      - tests/**
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - .github/workflows/format.yml
+      - conftest.py
+      - poetry.lock
+      - pyproject.toml
+      - clickext/**
+      - tests/**
+  workflow_dispatch:
+
+jobs:
+  black:
+    name: Black
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Setup python environment
+        uses: lojoja/action-setup-python-env@main
+        with:
+          python-version: "3.13"
+
+      - name: Run black
+        run: poetry run black --check .

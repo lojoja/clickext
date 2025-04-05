@@ -8,16 +8,19 @@ on:
   workflow_dispatch:
 
 jobs:
-  style:
-    name: Style
-    uses: ./.github/workflows/style.yml
+  format:
+    name: Format
+    uses: ./.github/workflows/format.yml
+  lint:
+    name: Lint
+    uses: ./.github/workflows/lint.yml
   tests:
     name: Tests
     uses: ./.github/workflows/tests.yml
   build:
     name: Build
     uses: ./.github/workflows/build.yml
-    needs: [style, tests]
+    needs: [format, lint, tests]
   release:
     name: Create release
     runs-on: ubuntu-latest
@@ -30,6 +33,7 @@ jobs:
         with:
           name: dist
           path: dist/
+
       - name: Create release
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda
         with:
