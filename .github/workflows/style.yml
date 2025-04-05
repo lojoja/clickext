@@ -12,21 +12,20 @@ jobs:
   style:
     name: Style
     runs-on: ubuntu-latest
-    env:
-      PYTHON_VERSION: "3.10"
     steps:
       - name: Check out repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - name: Install poetry
-        run: pipx install poetry
-      - name: Set up python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55
+
+      - name: Setup python environment
+        uses: lojoja/action-setup-python-env@main
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: poetry
+          python-version: "3.13"
+
       - name: Install project
         run: poetry install
+
       - name: Run pylint
         run: poetry run pylint --recursive=y .
+
       - name: Run black
         run: poetry run black --check .
