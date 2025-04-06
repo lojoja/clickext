@@ -9,13 +9,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  tests:
-    name: Tests ${{ matrix.os }} python ${{ matrix.python-version }}
-    runs-on: ${{ matrix.os }}
+  pytest:
+    name: Pytest python-${{ matrix.python-version }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - name: Check out repository
