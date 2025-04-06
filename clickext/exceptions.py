@@ -29,20 +29,10 @@ def patch_exceptions(logger: logging.Logger) -> None:
 
     :param logger: The program logger. See `clickext.log.init_logging`.
     """
-
-    def excepthook(exc_type: type[BaseException], exc_value: BaseException, exc_traceback: TracebackType) -> None:
-        exc_info = (exc_type, exc_value, exc_traceback)
-
-        if issubclass(exc_type, KeyboardInterrupt):
-            sys.__excepthook__(*exc_info)
-            return
-
-        logger.critical(str(exc_value), exc_info=exc_info if logger.level == logging.DEBUG else None)
-
     click.ClickException.logger = logger  # pyright: ignore[reportAttributeAccessIssue]
     click.ClickException.show = _click_exception_patch
     click.UsageError.show = _click_usage_error_patch
-    sys.excepthook = excepthook
+    sys.excepthook = _excepthook
 
 
 def _click_exception_patch(self: click.ClickException, file: t.Optional[t.IO] = None) -> None:
@@ -75,3 +65,11 @@ def _click_usage_error_patch(self: click.UsageError, file: t.Optional[t.IO] = No
         click.echo(f"{self.ctx.get_usage()}\n{hint}", file=file, color=None)
 
     self.logger.error(self.format_message(), exc_info=exc_info)  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def _excepthook(exc_type: type[BaseException], exc_value: BaseException, exc_traceback: TracebackType | None) -> None:
+    """Patch for `sys.excepthook` that send output to a logger."""
+    logger = t.cast(logging.Logger, click.ClickException.logger)  # pyright: ignore[reportAttributeAccessIssue]
+    exc_info = (exc_type, exc_value, exc_traceback) if logger.level == logging.DEBUG else None
+    msg = "KeyboardInterrupt" if issubclass(exc_type, KeyboardInterrupt) else str(exc_value)
+    logger.critical(msg, exc_info=exc_info)

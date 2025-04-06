@@ -5,9 +5,8 @@ import sys
 
 import click
 import pytest
-from pytest_mock import MockerFixture
 
-from clickext.exceptions import patch_exceptions, _click_exception_patch, _click_usage_error_patch
+from clickext.exceptions import _excepthook, patch_exceptions, _click_exception_patch, _click_usage_error_patch
 from clickext.log import init_logging
 
 
@@ -21,26 +20,25 @@ def test_patch_exceptions_click_exceptions(logger: logging.Logger):
 @pytest.mark.parametrize("level", [logging.DEBUG, logging.INFO])
 @pytest.mark.parametrize("exc_class", [ValueError, KeyboardInterrupt])
 def test_patch_exceptions_sys_excepthook(
-    capsys: pytest.CaptureFixture, mocker: MockerFixture, logger: logging.Logger, exc_class: type[Exception], level: int
+    capsys: pytest.CaptureFixture, logger: logging.Logger, exc_class: type[BaseException], level: int
 ):
-    mock_excepthook = mocker.patch("sys.__excepthook__")
+    msg = "KeyboardInterrupt" if exc_class is KeyboardInterrupt else "msg"
 
     init_logging(logger, level)
 
-    exc = exc_class("msg")
-    exc_info = (type(exc), exc, exc.__traceback__)
-    sys.excepthook(*exc_info)
+    assert sys.excepthook is _excepthook
 
-    if exc_class is KeyboardInterrupt:
-        assert mock_excepthook.called_once_with(*exc_info)
+    try:
+        raise exc_class("msg")
+    except (ValueError, KeyboardInterrupt) as exc:
+        _excepthook(type(exc), exc, exc.__traceback__)
+
+    err = capsys.readouterr().err
+
+    if level == logging.DEBUG:
+        assert err.startswith(f"Critical: {msg}\nTraceback (most recent call last):")
     else:
-        expected = "Critical: msg"
-
-        if level == logging.DEBUG:
-            expected = f"{expected}\nValueError: msg"
-
-        assert capsys.readouterr().err == f"{expected}\n"
-        assert mock_excepthook.not_called()
+        assert err == f"Critical: {msg}\n"
 
 
 def test__click_exception_patch(capsys: pytest.CaptureFixture, logger: logging.Logger):
