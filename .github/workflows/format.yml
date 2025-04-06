@@ -19,6 +19,7 @@ on:
       - pyproject.toml
       - clickext/**
       - tests/**
+  workflow_call:
   workflow_dispatch:
 
 jobs:
