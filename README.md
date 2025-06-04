@@ -4,7 +4,7 @@ Extended features for the Python [click](https://github.com/pallets/click) libra
 
 ## Requirements
 
-- Python 3.10.x, 3.11.x
+- Python 3.10.x - 3.13.x
 - click 8.x.x
 
 ## Installation
