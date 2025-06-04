@@ -1,4 +1,11 @@
+*.egg-info/
 *.lock
+*.py[cod]
 *.sublime-workspace
+._*
+.coverage
+.DS_Store
+.pytest_cache/
 .venv/
+__pycache__/
 dist/

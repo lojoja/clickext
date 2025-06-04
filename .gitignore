@@ -1,12 +1,11 @@
 !*
-*.coverage
-*.egg-ignore
-*.egg-info
+*.egg-info/
 *.py[cod]
 *.sublime-workspace
 ._*
+.coverage
 .DS_Store
-.pytest_cache
-.venv
-__pycache__
+.pytest_cache/
+.venv/
+__pycache__/
 dist/
