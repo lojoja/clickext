@@ -1,12 +1,22 @@
 version: 2
+
 updates:
   - package-ecosystem: github-actions
     target-branch: dev
     directory: /
     schedule:
-      interval: monthly
+      interval: weekly
+    groups:
+      github-actions-dependencies:
+        patterns:
+          - "*"
+
   - package-ecosystem: pip
     target-branch: dev
     directory: /
     schedule:
-      interval: monthly
+      interval: weekly
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
