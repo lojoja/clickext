@@ -1,0 +1,99 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Whether to publish the release.
+        type: boolean
+        default: false
+        required: true
+
+env:
+  ARTIFACT_FILES: dist/*
+  ARTIFACT_NAME: dist
+  ARTIFACT_PATH: dist/
+  ASSET_FILE: clickext-.+
+  ASSET_PATH: dist/
+  ASSET_REGEX: "true"
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/CI.yml
+    if: inputs.publish == false && github.event_name != 'release'
+    with:
+      cd: true
+
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    if: inputs.publish == true || github.event_name == 'release'
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+    steps:
+      - name: Download release assets
+        uses: dsaltares/fetch-gh-release-asset@aa2ab1243d6e0d5b405b973c89fa4d06a2d0fff7
+        with:
+          file: ${{ env.ASSET_FILES }}
+          regex: ${{ env.ASSET_REGEX == 'true' }}
+          target: ${{ env.ASSET_PATH }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: ${{ inputs.publish == true && 'latest' || github.event.release.id }}
+
+      - name: Publish on Test PyPi
+        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc
+        with:
+          packages-dir: ${{ env.ASSET_PATH }}
+          repository-url: https://test.pypi.org/legacy/
+
+      - name: Publish on PyPi
+        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc
+        with:
+          packages-dir: ${{ env.ASSET_PATH }}
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: ci
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.ARTIFACT_PATH }}
+
+      - name: Create release
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda
+        with:
+          draft: true
+          fail_on_unmatched_files: true
+          files: ${{ env.ARTIFACT_FILES }}
+          prerelease: ${{ needs.ci.outputs.pre_release == 'true' }}
+          tag_name: ${{ needs.ci.outputs.version }}
+          target_commitish: ${{ github.sha }}
+
+  cd-result:
+    name: CD Result
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - ci
+      - publish
+      - release
+    steps:
+      - name: CD failed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+      - name: CD passed
+        run: exit 0

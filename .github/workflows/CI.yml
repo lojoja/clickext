@@ -1,0 +1,183 @@
+name: CI
+
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+    branches-ignore: [main]
+  workflow_call:
+    inputs:
+      cd:
+        description: Whether the workflow was called by the CD workflow.
+        type: boolean
+        default: false
+        required: true
+    outputs:
+      pre_release:
+        description: Whether the build is a pre-release.
+        value: ${{ jobs.build.outputs.pre_release }}
+      version:
+        description: The build version.
+        value: ${{ jobs.build.outputs.version }}
+  workflow_dispatch:
+
+env:
+  ARTIFACT_NAME: dist
+  ARTIFACT_PATH: dist/
+  ARTIFACT_RETENTION: 7
+  NODE_VERSION: "22"
+  PYTHON_PACKAGE_MANAGER: poetry
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.dedupe.outputs.should_skip }}
+      named: ${{ steps.dedupe.outputs.named }}
+    steps:
+      - name: Dedupe
+        id: dedupe
+        uses: lojoja/action-dedupe@main
+        with:
+          github_token: ${{ github.token }}
+          paths: |
+            - .github/workflows/CI.yml
+          paths_named: |
+            prettier:
+              paths_ignore:
+                - "**.lock"
+                - "**.py"
+                - "**.toml"
+                - LICENSE
+            python:
+              paths:
+                - "**.py"
+                - ${{ env.PYTHON_PACKAGE_MANAGER }}.lock
+                - pyproject.toml
+
+  black:
+    name: Black
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.should_skip == 'false' || ! fromJSON(needs.changes.outputs.named).python.should_skip
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Run black
+        uses: lojoja/action-black@main
+        with:
+          package_manager: ${{ env.PYTHON_PACKAGE_MANAGER }}
+          python_version: ${{ env.PYTHON_VERSION }}
+
+  prettier:
+    name: Prettier
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.should_skip == 'false' || ! fromJSON(needs.changes.outputs.named).prettier.should_skip
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Run prettier
+        uses: lojoja/action-prettier@main
+        with:
+          install: "true"
+          node_version: ${{ env.NODE_VERSION }}
+
+  pylint:
+    name: Pylint
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.should_skip == 'false' || ! fromJSON(needs.changes.outputs.named).python.should_skip
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Run pylint
+        uses: lojoja/action-pylint@main
+        with:
+          package_manager: ${{ env.PYTHON_PACKAGE_MANAGER }}
+          python_version: ${{ env.PYTHON_VERSION }}
+
+  pytest:
+    name: Pytest (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.should_skip == 'false' || ! fromJSON(needs.changes.outputs.named).python.should_skip
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Run pytest
+        uses: lojoja/action-pytest@main
+        with:
+          coverage: "true"
+          package_manager: ${{ env.PYTHON_PACKAGE_MANAGER }}
+          python_version: ${{ matrix.python-version }}
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: changes
+    if: inputs.cd == true || needs.changes.outputs.should_skip == 'false' || ! fromJSON(needs.changes.outputs.named).python.should_skip
+    outputs:
+      pre_release: ${{ steps.info.outputs.pre_release }}
+      version: ${{ steps.info.outputs.version }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Setup python environment
+        uses: lojoja/action-setup-python-env@main
+        with:
+          package_manager: ${{ env.PYTHON_PACKAGE_MANAGER }}
+          python_version: ${{ env.PYTHON_VERSION }}
+
+      - name: Build project
+        run: ${{ env.PYTHON_PACKAGE_MANAGER }} build
+
+      - name: Set build info
+        id: info
+        run: |
+          version=$(${{ env.PYTHON_PACKAGE_MANAGER }} version --short)
+          pre_release=false
+
+          if [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          then
+            pre_release=true
+          fi
+
+          echo "pre_release=$pre_release" >> $GITHUB_OUTPUT
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: inputs.cd == true
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.ARTIFACT_PATH }}
+          retention-days: ${{ env.ARTIFACT_RETENTION }}
+
+  ci-result:
+    name: CI Result
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - build
+      - black
+      - prettier
+      - pylint
+      - pytest
+    steps:
+      - name: CI failed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+      - name: CI passed
+        run: exit 0
