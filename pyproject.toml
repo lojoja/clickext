@@ -35,12 +35,12 @@ classifiers = [
 ]
 
 [tool.poetry.group.dev.dependencies]
-black = "^24.0.0"
-pylint = "^3.0.0"
-pyright = "^1.1.349"
-pytest = "^8.0.0"
-pytest-cov = ">=4.1,<7.0"
-pytest-mock = "^3.12.0"
+black = "^25.1.0"
+pylint = "^3.3.8"
+pyright = "^1.1.405"
+pytest = "^8.4.2"
+pytest-cov = ">=4.1,<8.0"
+pytest-mock = "^3.15.0"
 
 [tool.black]
 include = '\.pyi?$'
