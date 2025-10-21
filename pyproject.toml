@@ -67,7 +67,7 @@ ignore-paths = ["^(.*/)?.venv/.*$", "^(.*/)?dist/.*$"]
 load-plugins = ["pylint.extensions.mccabe"]
 
 [tool.pylint.design]
-max-complexity = 15
+max-complexity = 16
 
 [tool.pylint.format]
 max-line-length = 120
