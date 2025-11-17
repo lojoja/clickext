@@ -203,7 +203,7 @@ def test_verbosity_option_level(logger: logging.Logger, level: t.Optional[str]):
             "Usage: cmd [OPTIONS]\n"
             "Try 'cmd --help' for help.\n\n"
             "Error: Invalid value for '--verbosity' / '-v': "
-            "'XYZ' is not one of 'QUIET', 'CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'.\n"
+            "'XYZ' is not one of 'quiet', 'critical', 'error', 'warning', 'info', 'debug'.\n"
         )
     elif level == QUIET_LEVEL_NAME:
         cmd_msg_level = QUIET_LEVEL_NUM
