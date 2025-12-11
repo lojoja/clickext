@@ -64,7 +64,7 @@ jobs:
     if: needs.changes.outputs.should_skip == 'false' || ! fromJSON(needs.changes.outputs.named).python.should_skip
     steps:
       - name: Check out repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
       - name: Run black
         uses: lojoja/action-black@main
@@ -79,7 +79,7 @@ jobs:
     if: needs.changes.outputs.should_skip == 'false' || ! fromJSON(needs.changes.outputs.named).prettier.should_skip
     steps:
       - name: Check out repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
       - name: Run prettier
         uses: lojoja/action-prettier@main
@@ -94,7 +94,7 @@ jobs:
     if: needs.changes.outputs.should_skip == 'false' || ! fromJSON(needs.changes.outputs.named).python.should_skip
     steps:
       - name: Check out repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
       - name: Run pylint
         uses: lojoja/action-pylint@main
@@ -113,7 +113,7 @@ jobs:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - name: Check out repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
       - name: Run pytest
         uses: lojoja/action-pytest@main
@@ -132,7 +132,7 @@ jobs:
       version: ${{ steps.info.outputs.version }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
       - name: Setup python environment
         uses: lojoja/action-setup-python-env@main
