@@ -9,7 +9,6 @@ import typing as t
 
 import click
 
-
 __all__ = ["ClickextCommand", "ClickextGroup"]
 
 

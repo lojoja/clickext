@@ -12,7 +12,6 @@ import click
 
 from .exceptions import patch_exceptions
 
-
 QUIET_LEVEL_NAME = "QUIET"
 QUIET_LEVEL_NUM = 1000
 
