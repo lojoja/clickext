@@ -27,7 +27,7 @@ def test_config_option_file_read(mocker: MockerFixture, config: dict[str, Path],
         expected_output = "Error: Failed to read configuration file\n"
 
     @click.command(cls=ClickextCommand)
-    @config_option(config["json_valid"], **opts)  # type:ignore
+    @config_option(config["json_valid"], **opts)  # type: ignore
     def cmd(): ...
 
     runner = CliRunner()
