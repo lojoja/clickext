@@ -1,31 +1,29 @@
-# pylint: disable=missing-module-docstring,missing-function-docstring,unused-argument
-
-from contextlib import nullcontext as does_not_raise
 import errno
-import typing as t
+import re
+from contextlib import nullcontext as does_not_raise
 
 import click
-from click.testing import CliRunner
 import pytest
+from click.testing import CliRunner
 
 from clickext.core import ClickextCommand, ClickextGroup
 
 
 @pytest.mark.parametrize("aliases", [None, [], ["b", "a", "c"]])
-def test_clickext_command_aliases(aliases: t.Optional[list[str]]):
+def test_clickext_command_aliases(aliases: list[str] | None) -> None:
     cmd = ClickextCommand(aliases=aliases)
     assert cmd.aliases == (sorted(aliases) if aliases else [])
 
 
-def test_clickext_command_global_options():
+def test_clickext_command_global_options() -> None:
     cmd = ClickextCommand()
-    assert cmd.global_opts == {}  # pylint: disable=use-implicit-booleaness-not-comparison
+    assert cmd.global_opts == {}
 
 
-def test_clickext_command_help():
+def test_clickext_command_help() -> None:
     @click.command(cls=ClickextCommand, aliases=["a", "b"])
     @click.option("--opt", hidden=True)
-    def cmd(opt: str): ...
+    def cmd(opt: str) -> None: ...
 
     runner = CliRunner()
     result = runner.invoke(cmd, "--help")
@@ -49,7 +47,7 @@ def test_clickext_command_help():
     ],
 )
 @pytest.mark.parametrize("catch_exceptions", [True, False])
-def test_clickext_command_invoke(catch_exceptions: bool, exc_class: type[Exception]):
+def test_clickext_command_invoke(catch_exceptions: bool, exc_class: type[Exception]) -> None:
     if not catch_exceptions and exc_class in [OSError, RuntimeError, TypeError]:
         context = pytest.raises(exc_class, match="msg")
     else:
@@ -57,22 +55,23 @@ def test_clickext_command_invoke(catch_exceptions: bool, exc_class: type[Excepti
 
     if exc_class in [EOFError, KeyboardInterrupt]:
         expected_output = "\nAborted!\n"
-    elif exc_class == click.Abort:
+    elif exc_class is click.Abort:
         expected_output = "Aborted!\n"
-    elif exc_class == click.exceptions.Exit:
+    elif exc_class is click.exceptions.Exit:
         expected_output = "msg\n"
-    elif exc_class == BrokenPipeError:  # click catches this and exits
+    elif exc_class is BrokenPipeError:  # click catches this and exits
         expected_output = ""
     else:
         expected_output = "Error: msg\n"
 
     @click.command(cls=ClickextCommand, catch_exceptions=catch_exceptions)
-    def cmd():
-        if exc_class == BrokenPipeError:
+    def cmd() -> None:
+        if exc_class is BrokenPipeError:
             exc = OSError("msg")
             exc.errno = errno.EPIPE
             raise exc
-        raise exc_class("msg")
+        msg = "msg"
+        raise exc_class(msg)
 
     runner = CliRunner()
 
@@ -87,21 +86,19 @@ def test_clickext_command_invoke(catch_exceptions: bool, exc_class: type[Excepti
 @pytest.mark.parametrize("opt2", ["", "--opt2"])
 @pytest.mark.parametrize("opt1", ["", "--opt1"])
 @pytest.mark.parametrize("mx_opts", [[], [("opt1", "opt2")]])
-def test_clickext_command_validate_mutually_exclusive_options(mx_opts: list[tuple[str]], opt1: str, opt2: str):
+def test_clickext_command_validate_mutually_exclusive_options(mx_opts: list[tuple[str]], opt1: str, opt2: str) -> None:
     @click.command(cls=ClickextCommand, mx_opts=mx_opts)
     @click.option("--opt1", is_flag=True, default=False)
     @click.option("--opt2", is_flag=True, default=False)
-    def cmd(opt1: bool, opt2: bool): ...
+    def cmd(opt1: bool, opt2: bool) -> None: ...
 
     runner = CliRunner()
-    result = runner.invoke(cmd, " ".join([opt1, opt2]))
+    result = runner.invoke(cmd, f"{opt1} {opt2}")
 
     if mx_opts and opt1 and opt2:
-        assert result.exit_code == 2
+        assert result.exit_code == 2  # noqa: PLR2004
         assert result.output == (
-            "Usage: cmd [OPTIONS]\n"
-            "Try 'cmd --help' for help.\n\n"
-            "Error: Mutually exclusive options: --opt1 --opt2\n"
+            "Usage: cmd [OPTIONS]\nTry 'cmd --help' for help.\n\nError: Mutually exclusive options: --opt1 --opt2\n"
         )
     else:
         assert result.exit_code == 0
@@ -109,7 +106,7 @@ def test_clickext_command_validate_mutually_exclusive_options(mx_opts: list[tupl
 
 
 @pytest.mark.parametrize("cmd_name", ["cmd", "a", "undefined"])
-def test_clickext_group_command_aliases(cmd_name: str):
+def test_clickext_group_command_aliases(cmd_name: str) -> None:
     expected_code = 0
     expected_output = ""
 
@@ -121,10 +118,10 @@ def test_clickext_group_command_aliases(cmd_name: str):
         )
 
     @click.group(cls=ClickextGroup)
-    def grp(): ...
+    def grp() -> None: ...
 
     @grp.command(cls=ClickextCommand, aliases=["a"])
-    def cmd(): ...
+    def cmd() -> None: ...
 
     runner = CliRunner()
     result = runner.invoke(grp, cmd_name)
@@ -134,7 +131,7 @@ def test_clickext_group_command_aliases(cmd_name: str):
 
 
 @pytest.mark.parametrize("cmd_class", [click.Command, ClickextCommand])
-def test_clickext_group_command_class(cmd_class: click.Command):
+def test_clickext_group_command_class(cmd_class: click.Command) -> None:
     context = does_not_raise()
 
     if cmd_class is click.Command:
@@ -143,32 +140,32 @@ def test_clickext_group_command_class(cmd_class: click.Command):
     with context:
 
         @click.group(cls=ClickextGroup)
-        def grp(): ...
+        def grp() -> None: ...
 
         @grp.command(cls=cmd_class)
-        def cmd(): ...
+        def cmd() -> None: ...
 
 
 @pytest.mark.parametrize("with_cmds", [True, False])
-def test_clickext_group_help(with_cmds: bool):
+def test_clickext_group_help(with_cmds: bool) -> None:
     command_section = ""
 
     @click.group(cls=ClickextGroup, global_opts=["opt1"], shared_params=["opt2"])
     @click.option("--opt1")
     @click.option("--opt2")
-    def grp(opt1: str): ...
+    def grp(opt1: str) -> None: ...
 
     if with_cmds:
         command_section = "\nCommands:\n  cmd1 (a,b)\n  cmd2\n"
 
         @grp.command(cls=ClickextCommand, aliases=["a", "b"])
-        def cmd1(opt1: str, opt2: str): ...
+        def cmd1(opt1: str, opt2: str) -> None: ...
 
         @grp.command(cls=ClickextCommand)
-        def cmd2(opt1: str, opt2: str): ...
+        def cmd2(opt1: str, opt2: str) -> None: ...
 
         @grp.command(cls=ClickextCommand, hidden=True)
-        def cmd3(opt1: str, opt2: str): ...
+        def cmd3(opt1: str, opt2: str) -> None: ...
 
     runner = CliRunner()
     result = runner.invoke(grp, "--help")
@@ -184,19 +181,19 @@ def test_clickext_group_help(with_cmds: bool):
 
 
 @pytest.mark.parametrize("cmd", ["cmd1", "cmd2"])
-def test_clickext_group_help_subcommand(cmd: str):
+def test_clickext_group_help_subcommand(cmd: str) -> None:
     alias_section = "\nAliases:\n  a\n  b\n" if cmd == "cmd1" else ""
 
     @click.group(cls=ClickextGroup, global_opts=["opt1"], shared_params=["opt2"])
     @click.option("--opt1")
     @click.option("--opt2")
-    def grp(opt1: str): ...
+    def grp(opt1: str) -> None: ...
 
     @grp.command(cls=ClickextCommand, aliases=["a", "b"])
-    def cmd1(opt1: str, opt2: str): ...
+    def cmd1(opt1: str, opt2: str) -> None: ...
 
     @grp.command(cls=ClickextCommand)
-    def cmd2(opt1: str, opt2: str): ...
+    def cmd2(opt1: str, opt2: str) -> None: ...
 
     runner = CliRunner()
     result = runner.invoke(grp, [cmd, "--help"])
@@ -213,7 +210,7 @@ def test_clickext_group_help_subcommand(cmd: str):
 
 
 @pytest.mark.parametrize("global_opts", [None, [], ["opt"], ["arg"], ["undefined"]])
-def test_clickext_group_global_options_init(global_opts: t.Optional[list[str]]):
+def test_clickext_group_global_options_init(global_opts: list[str] | None) -> None:
     context = does_not_raise()
 
     if global_opts:
@@ -221,7 +218,7 @@ def test_clickext_group_global_options_init(global_opts: t.Optional[list[str]]):
             context = pytest.raises(ValueError, match="Unknown global option undefined")
         elif "arg" in global_opts:
             context = pytest.raises(
-                TypeError, match="Invalid global option arg; global options must be a 'click.Option'"
+                TypeError, match=re.escape("Invalid global option arg; global options must be a 'click.Option'")
             )
 
     with context:
@@ -229,32 +226,34 @@ def test_clickext_group_global_options_init(global_opts: t.Optional[list[str]]):
         @click.group(cls=ClickextGroup, global_opts=global_opts)
         @click.argument("arg")
         @click.option("--opt")
-        def grp(): ...
+        def grp() -> None: ...
 
 
 @pytest.mark.parametrize("extra_opt", ["--extra-opt", "-e"])
 @pytest.mark.parametrize("opt", ["--opt", "-o"])
 @pytest.mark.parametrize(
-    ["args_template", "should_fail"],
+    ("args_template", "should_fail"),
     [
-        ["{opt}", True],
-        ["{opt} cmd", False],
-        ["{opt} cmd {extra_opt}", False],
-        ["{opt} {extra_opt} cmd", False],
-        ["{opt} {extra_opt} cmd {extra_opt}", False],
-        ["{extra_opt} cmd {opt}", False],
-        ["{extra_opt} cmd {opt} {extra_opt}", False],
-        ["{extra_opt} cmd {extra_opt} {opt}", False],
-        ["{extra_opt} {opt} cmd", False],
-        ["{extra_opt} {opt} cmd {extra_opt}", False],
-        ["cmd", False],
-        ["cmd {opt}", False],
-        ["cmd {opt} {extra_opt}", False],
-        ["cmd {extra_opt}", False],
-        ["cmd {extra_opt} {opt}", False],
+        ("{opt}", True),
+        ("{opt} cmd", False),
+        ("{opt} cmd {extra_opt}", False),
+        ("{opt} {extra_opt} cmd", False),
+        ("{opt} {extra_opt} cmd {extra_opt}", False),
+        ("{extra_opt} cmd {opt}", False),
+        ("{extra_opt} cmd {opt} {extra_opt}", False),
+        ("{extra_opt} cmd {extra_opt} {opt}", False),
+        ("{extra_opt} {opt} cmd", False),
+        ("{extra_opt} {opt} cmd {extra_opt}", False),
+        ("cmd", False),
+        ("cmd {opt}", False),
+        ("cmd {opt} {extra_opt}", False),
+        ("cmd {extra_opt}", False),
+        ("cmd {extra_opt} {opt}", False),
     ],
 )
-def test_clickext_group_global_options_parse_flag(args_template: str, opt: str, extra_opt: str, should_fail: bool):
+def test_clickext_group_global_options_parse_flag(
+    args_template: str, opt: str, extra_opt: str, should_fail: bool
+) -> None:
     expected_code = 0
     expected_output = ""
 
@@ -267,11 +266,11 @@ def test_clickext_group_global_options_parse_flag(args_template: str, opt: str, 
     @click.group(cls=ClickextGroup, global_opts=["opt"])
     @click.option("--opt", "-o", is_flag=True)
     @click.option("--extra-opt", "-e", is_flag=True)
-    def grp(opt: bool, extra_opt: bool): ...
+    def grp(opt: bool, extra_opt: bool) -> None: ...
 
     @grp.command(cls=ClickextCommand)
     @click.option("--extra-opt", "-e", is_flag=True)
-    def cmd(extra_opt: bool): ...
+    def cmd(extra_opt: bool) -> None: ...
 
     runner = CliRunner()
     result = runner.invoke(grp, args_template.format(opt=opt, extra_opt=extra_opt))
@@ -284,7 +283,7 @@ def test_clickext_group_global_options_parse_flag(args_template: str, opt: str, 
 @pytest.mark.parametrize("extra_opt", ["--extra-opt", "-e"])
 @pytest.mark.parametrize("opt", ["--opt", "-o"])
 @pytest.mark.parametrize(
-    ["args_template", "failure_reason"],
+    ("args_template", "failure_reason"),
     [
         ("{opt}", "missing_argument"),
         ("{opt} cmd", "missing_command"),
@@ -316,7 +315,7 @@ def test_clickext_group_global_options_parse_flag(args_template: str, opt: str, 
 )
 def test_clickext_group_global_options_parse_value(
     args_template: str, failure_reason: str, opt: str, extra_opt: str, value: str
-):
+) -> None:
     expected_code = 0
     expected_output = ""
 
@@ -332,11 +331,11 @@ def test_clickext_group_global_options_parse_value(
     @click.group(cls=ClickextGroup, global_opts=["opt"])
     @click.option("--opt", "-o", default="a")
     @click.option("--extra-opt", "-e", is_flag=True)
-    def grp(opt: str, extra_opt: bool): ...
+    def grp(opt: str, extra_opt: bool) -> None: ...
 
     @grp.command(cls=ClickextCommand)
     @click.option("--extra-opt", "-e", is_flag=True)
-    def cmd(extra_opt: bool): ...
+    def cmd(extra_opt: bool) -> None: ...
 
     runner = CliRunner()
     result = runner.invoke(grp, args_template.format(opt=opt, val=value, extra_opt=extra_opt))
@@ -349,7 +348,7 @@ def test_clickext_group_global_options_parse_value(
 @pytest.mark.parametrize("extra_opt", ["--extra-opt", "-e"])
 @pytest.mark.parametrize("opt", ["--opt", "-o"])
 @pytest.mark.parametrize(
-    ["args_template", "failure_reason"],
+    ("args_template", "failure_reason"),
     [
         ("{opt}", "missing_argument"),
         ("{opt} cmd", "missing_argument"),
@@ -381,7 +380,7 @@ def test_clickext_group_global_options_parse_value(
 )
 def test_clickext_group_global_options_parse_value_nargs(
     args_template: str, failure_reason: str, opt: str, extra_opt: str, values: tuple[str, str]
-):
+) -> None:
     expected_code = 0
     expected_output = ""
 
@@ -397,11 +396,11 @@ def test_clickext_group_global_options_parse_value_nargs(
     @click.group(cls=ClickextGroup, global_opts=["opt"])
     @click.option("--opt", "-o", default=("a", "b"), nargs=2)
     @click.option("--extra-opt", "-e", is_flag=True)
-    def grp(opt: str, extra_opt: bool): ...
+    def grp(opt: str, extra_opt: bool) -> None: ...
 
     @grp.command(cls=ClickextCommand)
     @click.option("--extra-opt", "-e", is_flag=True)
-    def cmd(extra_opt: bool): ...
+    def cmd(extra_opt: bool) -> None: ...
 
     runner = CliRunner()
     result = runner.invoke(grp, args_template.format(opt=opt, val1=values[0], val2=values[1], extra_opt=extra_opt))
@@ -411,7 +410,7 @@ def test_clickext_group_global_options_parse_value_nargs(
 
 
 @pytest.mark.parametrize("global_opt", ["", "opt1", "opt2", "opt3", "cmd"])
-def test_clickext_group_global_options_validation(global_opt: str):
+def test_clickext_group_global_options_validation(global_opt: str) -> None:
     context = does_not_raise()
 
     if global_opt == "opt2":
@@ -429,16 +428,16 @@ def test_clickext_group_global_options_validation(global_opt: str):
         @click.option("--opt2", is_flag=True)
         @click.option("--opt3", is_flag=True)
         @click.option("--cmd", is_flag=True)
-        def grp(): ...
+        def grp() -> None: ...
 
         @grp.command(cls=ClickextCommand)
         @click.option("--opt2", is_flag=True)
         @click.option("--opt3", "opt3_var", is_flag=True)
-        def cmd(): ...
+        def cmd() -> None: ...
 
 
 @pytest.mark.parametrize("shared_params", [None, [], ["opt"], ["undefined"]])
-def test_clickext_group_shared_parameters_init(shared_params: t.Optional[list[str]]):
+def test_clickext_group_shared_parameters_init(shared_params: list[str] | None) -> None:
     context = does_not_raise()
 
     if shared_params and "undefined" in shared_params:
@@ -448,23 +447,22 @@ def test_clickext_group_shared_parameters_init(shared_params: t.Optional[list[st
 
         @click.group(cls=ClickextGroup, shared_params=shared_params)
         @click.option("--opt")
-        def grp(): ...
+        def grp() -> None: ...
 
 
 @pytest.mark.parametrize("opt", ["", "--opt", "-o"])
 @pytest.mark.parametrize("cmd_name", ["cmd1", "cmd2"])
-def test_clickext_group_shared_parameters_on_subcommands(cmd_name: str, opt: str):
-
+def test_clickext_group_shared_parameters_on_subcommands(cmd_name: str, opt: str) -> None:
     @click.group(cls=ClickextGroup, shared_params=["opt"])
     @click.option("--opt", "-o", is_flag=True)
-    def grp(): ...
+    def grp() -> None: ...
 
     @grp.command(cls=ClickextCommand)
-    def cmd1(opt: bool):
+    def cmd1(opt: bool) -> None:
         click.echo(f"cmd1: {opt}")
 
     @grp.command(cls=ClickextCommand)
-    def cmd2(opt: bool):
+    def cmd2(opt: bool) -> None:
         click.echo(f"cmd2: {opt}")
 
     runner = CliRunner()
@@ -475,7 +473,7 @@ def test_clickext_group_shared_parameters_on_subcommands(cmd_name: str, opt: str
 
 
 @pytest.mark.parametrize("shared_param", ["", "opt1", "opt2", "opt3", "arg"])
-def test_clickext_group_shared_parameters_validation(shared_param: str):
+def test_clickext_group_shared_parameters_validation(shared_param: str) -> None:
     context = does_not_raise()
 
     if shared_param == "opt2":
@@ -494,12 +492,10 @@ def test_clickext_group_shared_parameters_validation(shared_param: str):
         @click.option("--opt2", is_flag=True)
         @click.option("--opt3", is_flag=True)
         @click.option("--arg", is_flag=True)
-        def grp():
-            pass
+        def grp() -> None: ...
 
         @grp.command(cls=ClickextCommand)
         @click.option("--opt2", is_flag=True)
         @click.option("--opt3", "xyz", is_flag=True)
         @click.argument("arg", nargs=1)
-        def cmd():
-            pass
+        def cmd() -> None: ...

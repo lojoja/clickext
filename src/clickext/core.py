@@ -1,5 +1,4 @@
-"""
-clickext.core
+"""clickext.core.
 
 Extended functionality for the click library.
 """
@@ -21,23 +20,25 @@ class ClickextCommand(click.Command):
 
     Mutually exclusive options are validated before invoking the command. Validation fails when all of the mutually
     exclusive options are passed as arguments and one or more options has a value other than its default.
-
-    :param aliases: Alternate names that should invoke this command.
-    :param mx_opts: Groups of options that are mutually exclusive. Each item is a `tuple` of `click.Option` names that
-    cannot be used together, e.g, `[("foo", "bar")]`.
-    :param catch_exceptions: Whether exceptions that occur during command invocation should be caught and re-raised as
-    `click.ClickExceptions`.
-    :param attrs: Extra arguments passed to `click.Command`.
     """
 
     def __init__(
         self,
-        name: t.Optional[str] = None,
-        aliases: t.Optional[list[str]] = None,
-        mx_opts: t.Optional[list[tuple[str]]] = None,
-        catch_exceptions: bool = True,
-        **attrs: t.Any,
-    ):
+        name: str | None = None,
+        aliases: list[str] | None = None,
+        mx_opts: list[tuple[str]] | None = None,
+        catch_exceptions: bool = True,  # noqa: FBT001, FBT002
+        **attrs: t.Any,  # noqa: ANN401
+    ) -> None:
+        """Initialize a clickext command.
+
+        :param aliases: Alternate names that should invoke this command.
+        :param mx_opts: Groups of options that are mutually exclusive. Each item is a `tuple` of `click.Option` names
+        that cannot be used together, e.g, `[("foo", "bar")]`.
+        :param catch_exceptions: Whether exceptions that occur during command invocation should be caught and re-raised
+        as `click.ClickExceptions`.
+        :param attrs: Extra arguments passed to `click.Command`.
+        """
         super().__init__(name, **attrs)
 
         self._catch_exceptions = catch_exceptions
@@ -45,7 +46,7 @@ class ClickextCommand(click.Command):
         self.mx_opts = mx_opts or []
         self.global_opts: dict[str, click.Option] = {}
 
-    def invoke(self, ctx: click.Context) -> t.Any:
+    def invoke(self, ctx: click.Context) -> t.Any:  # noqa: ANN401
         """Given a context, this invokes the command.
 
         Catches most exceptions that occur during a command invocation and re-raises them as a `click.ClickException`.
@@ -76,12 +77,12 @@ class ClickextCommand(click.Command):
             if self._catch_exceptions and isinstance(exc, OSError) and exc.errno != errno.EPIPE:
                 raise click.ClickException(str(exc)) from exc
             raise
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:
             if self._catch_exceptions:
                 raise click.ClickException(str(exc)) from exc
             raise
 
-    def parse_args(self, ctx: click.Context, args: t.List[str]) -> t.List[str]:
+    def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
         """Parse arguments and update the context.
 
         Mutually exclusive options are validated after parsing because the resolved values are required to determine
@@ -112,14 +113,15 @@ class ClickextCommand(click.Command):
                     passed.append(param.opts[0])
 
                     if len(passed) == len(mx_opts):
-                        raise click.UsageError(f"Mutually exclusive options: {' '.join(passed)}", ctx)
+                        msg = f"Mutually exclusive options: {' '.join(passed)}"
+                        raise click.UsageError(msg, ctx)
 
     def list_global_options(self) -> list[click.Option]:
         """Get a list of global options registered with the command."""
         return list(self.global_opts.values())
 
     def format_help(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
-        """Writes the help into the formatter if it exists.
+        """Write the help into the formatter if it exists.
 
         :param ctx: The current `click.Context` object.
         :param formatter: The help output formatter.
@@ -161,10 +163,7 @@ class ClickextCommand(click.Command):
         :param formatter: The help output formatter.
         """
         if ctx.parent:
-            aliases = []
-
-            for alias in self.aliases:
-                aliases.append((alias, ""))
+            aliases = [(alias, "") for alias in self.aliases]
 
             if aliases:
                 with formatter.section("Aliases"):
@@ -191,26 +190,28 @@ class ClickextGroup(ClickextCommand, click.Group):
     parameters cannot be passed to the group itself. Shared parameter names cannot be the same as a subcommand parameter
     name or share long/short option strings with a subcommand option. Shared parameters cannot be mutually exclusive
     with global options, but can be mutually exclusive with non-shared subcommand parameters.
-
-    :param global_opts: `click.Option` names that can be passed to the group and all subcommands in the group.
-    :param shared_params: `click.Parameter` names that can be passed to all subcommands in the group, but not the group
-    itself.
-    :param attrs: Extra arguments passed to `ClickextCommand` and `click.Group`.
     """
 
     def __init__(
         self,
-        name: t.Optional[str] = None,
-        global_opts: t.Optional[list[str]] = None,
-        shared_params: t.Optional[list[str]] = None,
-        **attrs: t.Any,
-    ):
+        name: str | None = None,
+        global_opts: list[str] | None = None,
+        shared_params: list[str] | None = None,
+        **attrs: t.Any,  # noqa: ANN401
+    ) -> None:
+        """Initialize clickext group.
+
+        :param global_opts: `click.Option` names that can be passed to the group and all subcommands in the group.
+        :param shared_params: `click.Parameter` names that can be passed to all subcommands in the group, but not the
+        group itself.
+        :param attrs: Extra arguments passed to `ClickextCommand` and `click.Group`.
+        """
         super().__init__(name, **attrs)
 
         self.global_opts: dict[str, click.Option] = self.init_global_options(global_opts)
         self.shared_params: dict[str, click.Parameter] = self.init_shared_params(shared_params)
 
-    def init_global_options(self, names: t.Optional[list[str]] = None) -> dict[str, click.Option]:
+    def init_global_options(self, names: list[str] | None = None) -> dict[str, click.Option]:
         """Find and validate global options for the group.
 
         :param names: A list of `click.Option` names to make global.
@@ -225,16 +226,18 @@ class ClickextGroup(ClickextCommand, click.Group):
             param = next((p for p in self.params if p.name == name), None)
 
             if not param:
-                raise ValueError(f"Unknown global option {name}")
+                msg = f"Unknown global option {name}"
+                raise ValueError(msg)
 
             if not isinstance(param, click.Option):
-                raise TypeError(f"Invalid global option {name}; global options must be a 'click.Option'")
+                msg = f"Invalid global option {name}; global options must be a 'click.Option'"
+                raise TypeError(msg)
 
             options[name] = param
 
         return options
 
-    def init_shared_params(self, names: t.Optional[list[str]] = None) -> dict[str, click.Parameter]:
+    def init_shared_params(self, names: list[str] | None = None) -> dict[str, click.Parameter]:
         """Find, extract, and validate shared subcommand parameters from the group parameters.
 
         :param names: A list of parameter names to share with all subcommands.
@@ -248,7 +251,8 @@ class ClickextGroup(ClickextCommand, click.Group):
             param = next((p for p in self.params if p.name == name), None)
 
             if not param:
-                raise ValueError(f"Unknown shared parameter {name}")
+                msg = f"Unknown shared parameter {name}"
+                raise ValueError(msg)
 
             params[name] = param
 
@@ -257,8 +261,8 @@ class ClickextGroup(ClickextCommand, click.Group):
 
         return params
 
-    def make_parser(self, ctx: click.Context, globals_only: bool = False) -> click.OptionParser:
-        """Creates the underlying option parser for this command.
+    def make_parser(self, ctx: click.Context, globals_only: bool = False) -> click.OptionParser:  # noqa: FBT001, FBT002
+        """Create the underlying option parser for this command.
 
         :param ctx: The current `click.Context` object.
         :param globals_only: Whether the parser should be restricted to global options.
@@ -311,7 +315,7 @@ class ClickextGroup(ClickextCommand, click.Group):
 
         try:
             param_order: list[click.Option]  # globals can only be `click.Option`
-            opts, args, param_order = parser.parse_args(args)  # type: ignore
+            opts, args, param_order = parser.parse_args(args)
         finally:
             for setting, value in original_ctx_settings.items():
                 setattr(ctx, setting, value)
@@ -335,7 +339,7 @@ class ClickextGroup(ClickextCommand, click.Group):
         return global_args + args
 
     def add_command(  # pyright: ignore[reportIncompatibleMethodOverride]
-        self, cmd: ClickextCommand, name: t.Optional[str] = None
+        self, cmd: ClickextCommand, name: str | None = None
     ) -> None:
         """Register a command with this group.
 
@@ -347,7 +351,8 @@ class ClickextGroup(ClickextCommand, click.Group):
         :raises TypeError: When a command that is not a `ClickextCommand` is added to the group.
         """
         if not isinstance(cmd, ClickextCommand):
-            raise TypeError("Only 'ClickextCommand's can be registered with a 'ClickextGroup'")
+            msg = "Only 'ClickextCommand's can be registered with a 'ClickextGroup'"
+            raise TypeError(msg)
 
         name = name or cmd.name
 
@@ -358,7 +363,7 @@ class ClickextGroup(ClickextCommand, click.Group):
 
         super().add_command(cmd, name)
 
-    def get_command(self, ctx: click.Context, cmd_name: str) -> t.Optional[ClickextCommand]:
+    def get_command(self, ctx: click.Context, cmd_name: str) -> ClickextCommand | None:
         """Get a command by name or alias.
 
         :param ctx: The current `click.Context` object.
@@ -381,23 +386,26 @@ class ClickextGroup(ClickextCommand, click.Group):
         with a global option, shared parameter name, or option string.
         """
         if name in self.global_opts:
-            raise ValueError(f"Subcommand {name} conflicts with a global option name")
+            msg = f"Subcommand {name} conflicts with a global option name"
+            raise ValueError(msg)
 
         for param in cmd.params:
             if param.name in self.global_opts:
-                raise ValueError(f"Subcommand option {param.name} conflicts with a global option name")
+                msg = f"Subcommand option {param.name} conflicts with a global option name"
+                raise ValueError(msg)
 
             if param.name in self.shared_params:
-                raise ValueError(
-                    f"Subcommand {param.param_type_name} {param.name} conflicts with a shared parameter name"
-                )
+                msg = f"Subcommand {param.param_type_name} {param.name} conflicts with a shared parameter name"
+                raise ValueError(msg)
 
             for opt in param.opts:
                 if any(opt in gopt.opts for gopt in self.list_global_options()):
-                    raise ValueError(f"Subcommand option string {opt} conflicts with a global option string")
+                    msg = f"Subcommand option string {opt} conflicts with a global option string"
+                    raise ValueError(msg)
 
                 if any(opt in sopt.opts for sopt in self.list_shared_parameters()):
-                    raise ValueError(f"Subcommand option string {opt} conflicts with a shared option string")
+                    msg = f"Subcommand option string {opt} conflicts with a shared option string"
+                    raise ValueError(msg)
 
     def list_shared_parameters(self) -> list[click.Parameter]:
         """Get a list of parameters shared with all subcommands."""
@@ -420,7 +428,7 @@ class ClickextGroup(ClickextCommand, click.Group):
             aliases = getattr(cmd, "aliases", [])
 
             if aliases:
-                subcommand = f"{subcommand} ({','.join(aliases)})"
+                subcommand = f"{subcommand} ({','.join(aliases)})"  # noqa: PLW2901
 
             commands.append((subcommand, cmd))
 

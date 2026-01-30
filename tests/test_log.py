@@ -1,5 +1,3 @@
-# pylint: disable=missing-module-docstring,missing-function-docstring
-
 from __future__ import annotations
 
 import logging
@@ -10,26 +8,27 @@ import click
 import pytest
 
 from clickext.log import (
+    QUIET_LEVEL_NAME,
+    QUIET_LEVEL_NUM,
     ColorFormatter,
     ConsoleFormatter,
     ConsoleHandler,
     init_logging,
-    QUIET_LEVEL_NUM,
-    QUIET_LEVEL_NAME,
 )
 
 if t.TYPE_CHECKING:
     from logging import _SysExcInfoType
+
     from clickext.log import Styles
 
 
-def test_color_formatter_inherits_console_formatter():
+def test_color_formatter_inherits_console_formatter() -> None:
     assert issubclass(ColorFormatter, ConsoleFormatter)
 
 
 @pytest.mark.parametrize("exc_info", [None, (None, None, None)])
 @pytest.mark.parametrize(
-    ["level", "color"],
+    ("level", "color"),
     [
         (logging.DEBUG, "blue"),
         (logging.INFO, None),
@@ -40,8 +39,8 @@ def test_color_formatter_inherits_console_formatter():
 )
 @pytest.mark.parametrize("message", ["line", "multi\nline", "  \nstripline \n"])
 def test_console_formatter_format(
-    message: str, level: int, color: t.Optional[None], exc_info: t.Optional[_SysExcInfoType]
-):
+    message: str, level: int, color: str | None, exc_info: _SysExcInfoType | None
+) -> None:
     record = logging.LogRecord("name", level, "path", 1, message, None, exc_info)
     expected = message.strip()
 
@@ -57,18 +56,19 @@ def test_console_formatter_format(
 
 
 @pytest.mark.parametrize("styles", [None, {}, {"bg": "green"}, {"fg": "purple"}])
-def test_console_formatter_merge_prefix_styles(styles: t.Optional[Styles]):
-    style_overrides = {logging.CRITICAL: styles, 20000: None}
+def test_console_formatter_merge_prefix_styles(styles: Styles | None) -> None:
+    bad_level = 20000
+    style_overrides = {logging.CRITICAL: styles, bad_level: None}
     formatter = ConsoleFormatter(prefix_styles=style_overrides)
     result = formatter.prefix_styles
 
-    assert 20000 not in result
+    assert bad_level not in result
 
     if styles is None:
         assert result[logging.CRITICAL] == {}
     else:
         assert result[logging.CRITICAL] == {
-            **formatter._default_styles[logging.CRITICAL],  # pylint: disable=protected-access
+            **formatter._default_styles[logging.CRITICAL],  # noqa: SLF001
             **styles,
         }
 
@@ -76,13 +76,13 @@ def test_console_formatter_merge_prefix_styles(styles: t.Optional[Styles]):
 @pytest.mark.parametrize("raise_exc", [True, False])
 @pytest.mark.parametrize("valid", [True, False])
 @pytest.mark.parametrize("level", [logging.INFO, logging.WARNING])
-def test_console_handler_emit(capsys: pytest.CaptureFixture, level: int, valid: bool, raise_exc: bool):
+def test_console_handler_emit(capsys: pytest.CaptureFixture, level: int, valid: bool, raise_exc: bool) -> None:
     logging.raiseExceptions = raise_exc
     record = logging.LogRecord("name", level, "path", 1, "msg", None, None) if valid else None
 
     handler = ConsoleHandler()
     handler.setFormatter(ConsoleFormatter())
-    handler.emit(record)  # type: ignore
+    handler.emit(record)
 
     captured = capsys.readouterr()
 
@@ -101,18 +101,18 @@ def test_console_handler_emit(capsys: pytest.CaptureFixture, level: int, valid: 
         assert captured.err == ""
 
 
-def test_init_logging_capture_warnings(capsys: pytest.CaptureFixture, logger: logging.Logger):
+def test_init_logging_capture_warnings(capsys: pytest.CaptureFixture, logger: logging.Logger) -> None:
     init_logging(logger)
 
     with warnings.catch_warnings():
         warnings.simplefilter("default")
-        warnings.warn("msg")
+        warnings.warn("msg", stacklevel=1)
 
     assert capsys.readouterr().err.startswith(f"Warning: {__file__}:")
 
 
 @pytest.mark.parametrize("exists", [True, False])
-def test_init_logging_creates_quiet_level(logger: logging.Logger, exists: bool):
+def test_init_logging_creates_quiet_level(logger: logging.Logger, exists: bool) -> None:
     if exists:  # The quiet level should only be added if it doesn't already exist.
         logging.addLevelName(QUIET_LEVEL_NUM, QUIET_LEVEL_NAME)
         setattr(logging, QUIET_LEVEL_NAME, QUIET_LEVEL_NUM)
@@ -124,7 +124,7 @@ def test_init_logging_creates_quiet_level(logger: logging.Logger, exists: bool):
 
 
 @pytest.mark.parametrize("level", [logging.DEBUG, "INFO", logging.INFO, logging.CRITICAL, QUIET_LEVEL_NUM])
-def test_init_logging_level(capsys: pytest.CaptureFixture, logger: logging.Logger, level: int | str):
+def test_init_logging_level(capsys: pytest.CaptureFixture, logger: logging.Logger, level: int | str) -> None:
     init_logging(logger, level)
 
     logger.debug("debug")
@@ -148,7 +148,7 @@ def test_init_logging_level(capsys: pytest.CaptureFixture, logger: logging.Logge
     assert captured.out == expected_out
 
 
-def test_init_logging_program_logger_config(logger: logging.Logger):
+def test_init_logging_program_logger_config(logger: logging.Logger) -> None:
     logger.addHandler(logging.NullHandler())
 
     init_logging(logger, logging.DEBUG)
@@ -158,19 +158,19 @@ def test_init_logging_program_logger_config(logger: logging.Logger):
 
 
 @pytest.mark.parametrize("level", [logging.DEBUG, logging.INFO])
-def test_init_logging_raise_exceptions(logger: logging.Logger, level: int):
+def test_init_logging_raise_exceptions(logger: logging.Logger, level: int) -> None:
     init_logging(logger, level)
     assert logging.raiseExceptions is (level == logging.DEBUG)
 
 
 @pytest.mark.parametrize("handlers", [None, [logging.StreamHandler()]])
-def test_init_logging_root_logger_config(logger: logging.Logger, handlers: t.Optional[list[logging.Handler]]):
+def test_init_logging_root_logger_config(logger: logging.Logger, handlers: list[logging.Handler] | None) -> None:
     root_logger = logging.getLogger()
     root_logger.addHandler(logging.NullHandler())
 
     init_logging(logger, logging.DEBUG, root_handlers=handlers)
 
-    assert len(root_logger.handlers) == 2 if handlers else 1
+    assert len(root_logger.handlers) == 2 if handlers else 1  # noqa: PLR2004
     assert root_logger.level == logging.DEBUG
     assert isinstance(root_logger.handlers[0], ConsoleHandler)
     assert isinstance(root_logger.handlers[0].formatter, ConsoleFormatter)

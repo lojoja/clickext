@@ -1,12 +1,9 @@
-# pylint: disable=missing-module-docstring,missing-function-docstring
-
 import logging
 from pathlib import Path
-import typing as t
 
 import click
-from click.testing import CliRunner
 import pytest
+from click.testing import CliRunner
 from pytest_mock import MockerFixture
 
 from clickext.core import ClickextCommand
@@ -16,7 +13,9 @@ from clickext.log import QUIET_LEVEL_NAME, QUIET_LEVEL_NUM
 
 @pytest.mark.parametrize("param_type_str", [True, False])
 @pytest.mark.parametrize("error", [True, False])
-def test_config_option_file_read(mocker: MockerFixture, config: dict[str, Path], error: bool, param_type_str: bool):
+def test_config_option_file_read(
+    mocker: MockerFixture, config: dict[str, Path], error: bool, param_type_str: bool
+) -> None:
     opts = {"type": click.STRING} if param_type_str else {}
     expected_code = 0
     expected_output = ""
@@ -27,8 +26,8 @@ def test_config_option_file_read(mocker: MockerFixture, config: dict[str, Path],
         expected_output = "Error: Failed to read configuration file\n"
 
     @click.command(cls=ClickextCommand)
-    @config_option(config["json_valid"], **opts)  # type: ignore
-    def cmd(): ...
+    @config_option(config["json_valid"], **opts)
+    def cmd() -> None: ...
 
     runner = CliRunner()
     result = runner.invoke(cmd)
@@ -39,7 +38,7 @@ def test_config_option_file_read(mocker: MockerFixture, config: dict[str, Path],
 
 @pytest.mark.parametrize("exists", [True, False])
 @pytest.mark.parametrize("required", [True, False])
-def test_config_option_file_required(config: dict[str, Path], required: bool, exists: bool):
+def test_config_option_file_required(config: dict[str, Path], required: bool, exists: bool) -> None:
     file = config["json_valid"] if exists else config["json_valid"] / "x"
     expected_code = 0
     expected_output = ""
@@ -50,7 +49,7 @@ def test_config_option_file_required(config: dict[str, Path], required: bool, ex
 
     @click.command(cls=ClickextCommand)
     @config_option(file, require_config=required)
-    def cmd(): ...
+    def cmd() -> None: ...
 
     runner = CliRunner()
     result = runner.invoke(cmd)
@@ -59,12 +58,12 @@ def test_config_option_file_required(config: dict[str, Path], required: bool, ex
     assert result.output == expected_output
 
 
-@pytest.mark.parametrize("param_decls", [tuple(), ("-o", "--override")])
-def test_config_option_param_decls(config: dict[str, Path], param_decls: tuple[str, ...]):
+@pytest.mark.parametrize("param_decls", [(), ("-o", "--override")])
+def test_config_option_param_decls(config: dict[str, Path], param_decls: tuple[str, ...]) -> None:
     @click.command(cls=ClickextCommand)
     @config_option(config["json_invalid"], *param_decls)
     @click.pass_obj
-    def cmd(obj: dict[str, str]):
+    def cmd(obj: dict[str, str]) -> None:
         click.echo(obj)
 
     runner = CliRunner()
@@ -76,7 +75,7 @@ def test_config_option_param_decls(config: dict[str, Path], param_decls: tuple[s
 
 @pytest.mark.parametrize("valid", [True, False])
 @pytest.mark.parametrize("config_format", ["ini", "json", "toml", "yaml"])
-def test_config_option_parse(config: dict[str, Path], config_format: str, valid: bool):
+def test_config_option_parse(config: dict[str, Path], config_format: str, valid: bool) -> None:
     file = config[f"{config_format}_{'' if valid else 'in'}valid"]
     expected_code = 0
     expected_output = ""
@@ -90,7 +89,7 @@ def test_config_option_parse(config: dict[str, Path], config_format: str, valid:
 
     @click.command(cls=ClickextCommand)
     @config_option(file)
-    def cmd(): ...
+    def cmd() -> None: ...
 
     runner = CliRunner()
     result = runner.invoke(cmd)
@@ -100,7 +99,7 @@ def test_config_option_parse(config: dict[str, Path], config_format: str, valid:
 
 
 @pytest.mark.parametrize("processor", [True, False])
-def test_config_option_processor(config: dict[str, Path], processor: bool):
+def test_config_option_processor(config: dict[str, Path], processor: bool) -> None:
     def callback(data: dict[str, str]) -> dict[str, str]:
         data["key"] = "processed_value"
         return data
@@ -108,7 +107,7 @@ def test_config_option_processor(config: dict[str, Path], processor: bool):
     @click.command(cls=ClickextCommand)
     @config_option(config["json_valid"], processor=callback if processor else None)
     @click.pass_obj
-    def cmd(obj: dict[str, str]):
+    def cmd(obj: dict[str, str]) -> None:
         click.echo(obj)
 
     runner = CliRunner()
@@ -119,10 +118,10 @@ def test_config_option_processor(config: dict[str, Path], processor: bool):
 
 
 @pytest.mark.parametrize("verbose", [True, False])
-def test_verbose_option_level(logger: logging.Logger, verbose: bool):
+def test_verbose_option_level(logger: logging.Logger, verbose: bool) -> None:
     @click.command(cls=ClickextCommand)
     @verbose_option(logger)
-    def cmd():
+    def cmd() -> None:
         logger.debug("msg")
         logger.info("msg")
 
@@ -138,20 +137,20 @@ def test_verbose_option_level(logger: logging.Logger, verbose: bool):
     assert result.output == "Debug: msg\nmsg\n" if verbose else "msg\n"
 
 
-def test_verbose_option_root_handlers(logger: logging.Logger):
+def test_verbose_option_root_handlers(logger: logging.Logger) -> None:
     @click.command(cls=ClickextCommand)
     @verbose_option(logger, root_handlers=[logging.NullHandler()])
-    def cmd(): ...
+    def cmd() -> None: ...
 
-    assert len(logging.getLogger().handlers) == 2
+    assert len(logging.getLogger().handlers) == 2  # noqa: PLR2004
     assert isinstance(logging.getLogger().handlers[1], logging.NullHandler)
 
 
-@pytest.mark.parametrize("param_decls", [tuple(), ("-o", "--override")])
-def test_verbose_option_param_decls(logger: logging.Logger, param_decls: tuple[str, ...]):
+@pytest.mark.parametrize("param_decls", [(), ("-o", "--override")])
+def test_verbose_option_param_decls(logger: logging.Logger, param_decls: tuple[str, ...]) -> None:
     @click.command(cls=ClickextCommand)
     @verbose_option(logger, *param_decls)
-    def cmd():
+    def cmd() -> None:
         logger.debug("msg")
 
     runner = CliRunner()
@@ -161,25 +160,25 @@ def test_verbose_option_param_decls(logger: logging.Logger, param_decls: tuple[s
     assert result.output == "Debug: msg\n"
 
 
-def test_verbose_option_prefix_styles(logger: logging.Logger):
+def test_verbose_option_prefix_styles(logger: logging.Logger) -> None:
     @click.command(cls=ClickextCommand)
     @verbose_option(logger, prefix_styles={logging.INFO: {"fg": "red"}})
-    def cmd(): ...
+    def cmd() -> None: ...
 
     runner = CliRunner()
     result = runner.invoke(cmd)
 
     assert result.exit_code == 0
-    assert logging.getLogger().handlers[0].formatter.prefix_styles[logging.INFO] == {"fg": "red"}  # type: ignore
+    assert logging.getLogger().handlers[0].formatter.prefix_styles[logging.INFO] == {"fg": "red"}
 
 
 @pytest.mark.parametrize("default", [True, False])
-def test_verbosity_option_default(logger: logging.Logger, default: bool):
+def test_verbosity_option_default(logger: logging.Logger, default: bool) -> None:
     opts = {} if default else {"default": "ERROR"}
 
     @click.command(cls=ClickextCommand)
-    @verbosity_option(logger, **opts)  # type: ignore
-    def cmd():
+    @verbosity_option(logger, **opts)
+    def cmd() -> None:
         logger.info("msg")
 
     runner = CliRunner()
@@ -192,7 +191,7 @@ def test_verbosity_option_default(logger: logging.Logger, default: bool):
 
 
 @pytest.mark.parametrize("level", [None, QUIET_LEVEL_NAME, "CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "XYZ"])
-def test_verbosity_option_level(logger: logging.Logger, level: t.Optional[str]):
+def test_verbosity_option_level(logger: logging.Logger, level: str | None) -> None:
     cmd_msg_level = logging.INFO
     expected_code = 0
     expected_output = "msg\n"
@@ -214,7 +213,7 @@ def test_verbosity_option_level(logger: logging.Logger, level: t.Optional[str]):
 
     @click.command(cls=ClickextCommand)
     @verbosity_option(logger)
-    def cmd():
+    def cmd() -> None:
         logger.log(cmd_msg_level, "msg")
 
     runner = CliRunner()
@@ -230,10 +229,10 @@ def test_verbosity_option_level(logger: logging.Logger, level: t.Optional[str]):
 
 
 @pytest.mark.parametrize("level", ["DEBUG", "debug"])
-def test_verbosity_option_level_case_insensitive(logger: logging.Logger, level: str):
+def test_verbosity_option_level_case_insensitive(logger: logging.Logger, level: str) -> None:
     @click.command(cls=ClickextCommand)
     @verbosity_option(logger)
-    def cmd():
+    def cmd() -> None:
         logger.debug("msg")
 
     runner = CliRunner()
@@ -243,11 +242,11 @@ def test_verbosity_option_level_case_insensitive(logger: logging.Logger, level: 
     assert result.output == "Debug: msg\n"
 
 
-@pytest.mark.parametrize("param_decls", [tuple(), ("-o", "--override")])
-def test_verbosity_option_param_decls(logger: logging.Logger, param_decls: tuple[str, ...]):
+@pytest.mark.parametrize("param_decls", [(), ("-o", "--override")])
+def test_verbosity_option_param_decls(logger: logging.Logger, param_decls: tuple[str, ...]) -> None:
     @click.command(cls=ClickextCommand)
     @verbosity_option(logger, *param_decls)
-    def cmd():
+    def cmd() -> None:
         logger.debug("msg")
 
     runner = CliRunner()
@@ -257,22 +256,22 @@ def test_verbosity_option_param_decls(logger: logging.Logger, param_decls: tuple
     assert result.output == "Debug: msg\n"
 
 
-def test_verbosity_option_prefix_styles(logger: logging.Logger):
+def test_verbosity_option_prefix_styles(logger: logging.Logger) -> None:
     @click.command(cls=ClickextCommand)
     @verbosity_option(logger, prefix_styles={logging.INFO: {"fg": "red"}})
-    def cmd(): ...
+    def cmd() -> None: ...
 
     runner = CliRunner()
     result = runner.invoke(cmd)
 
     assert result.exit_code == 0
-    assert logging.getLogger().handlers[0].formatter.prefix_styles[logging.INFO] == {"fg": "red"}  # type: ignore
+    assert logging.getLogger().handlers[0].formatter.prefix_styles[logging.INFO] == {"fg": "red"}
 
 
-def test_verbosity_option_root_handlers(logger: logging.Logger):
+def test_verbosity_option_root_handlers(logger: logging.Logger) -> None:
     @click.command(cls=ClickextCommand)
     @verbosity_option(logger, root_handlers=[logging.NullHandler()])
-    def cmd(): ...
+    def cmd() -> None: ...
 
-    assert len(logging.getLogger().handlers) == 2
+    assert len(logging.getLogger().handlers) == 2  # noqa: PLR2004
     assert isinstance(logging.getLogger().handlers[1], logging.NullHandler)

@@ -1,5 +1,4 @@
-"""
-clickext
+"""clickext.
 
 The clickext public API
 """

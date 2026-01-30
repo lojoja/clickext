@@ -1,5 +1,4 @@
-"""
-clickext.decorators
+"""clickext.decorators.
 
 Argument and option decorators for clickext commands.
 """
@@ -8,8 +7,8 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
 import typing as t
+from pathlib import Path
 
 import click
 import tomli
@@ -27,18 +26,18 @@ if t.TYPE_CHECKING:
     from .log import Styles
 
 
-_AnyCallable: t.TypeAlias = t.Callable[..., t.Any]
+type _AnyCallable = t.Callable[..., t.Any]
 FC = t.TypeVar("FC", bound=_AnyCallable | ClickextCommand)
 
 
 def config_option(
     file: Path | str,
     *param_decls: str,
-    processor: t.Optional[_AnyCallable] = None,
+    processor: _AnyCallable | None = None,
     require_config: bool = False,
-    **kwargs: t.Any,
+    **kwargs: t.Any,  # noqa: ANN401
 ) -> t.Callable[[FC], FC]:
-    """Adds a configuration file option.
+    """Add a configuration file option.
 
     Provides a method to load, parse, and optionally prepare data from a configuration file. The result is saved to
     `ctx.obj` and can be accessed with `@click.pass_context`, `@click.pass_obj`, or by registering a
@@ -80,7 +79,9 @@ def config_option(
     """
 
     def callback(
-        ctx: click.Context, param: click.Parameter, value: Path | str  # pylint: disable=unused-argument
+        ctx: click.Context,
+        param: click.Parameter,  # noqa: ARG001
+        value: Path | str,
     ) -> None:
         if isinstance(value, str):
             value = Path(value)
@@ -91,9 +92,11 @@ def config_option(
             try:
                 raw_text = value.read_text(encoding="utf8")
             except OSError as exc:
-                raise click.ClickException("Failed to read configuration file") from exc
+                msg = "Failed to read configuration file"
+                raise click.ClickException(msg) from exc
         elif require_config:
-            raise click.ClickException("Configuration file not found")
+            msg = "Configuration file not found"
+            raise click.ClickException(msg)
 
         if raw_text:
             try:
@@ -105,9 +108,11 @@ def config_option(
                     case ".yaml" | ".yml":
                         config = yaml.load(raw_text, Loader=SafeLoader)
                     case _:
-                        raise click.ClickException(f'Unknown configuration file format "{value.suffix}"')
+                        msg = f'Unknown configuration file format "{value.suffix}"'
+                        raise click.ClickException(msg)
             except (json.JSONDecodeError, tomli.TOMLDecodeError, yaml.YAMLError) as exc:
-                raise click.ClickException("Failed to parse configuration file") from exc
+                msg = "Failed to parse configuration file"
+                raise click.ClickException(msg) from exc
         else:
             config = None
 
@@ -133,11 +138,11 @@ def config_option(
 def verbose_option(
     logger: logging.Logger,
     *param_decls: str,
-    root_handlers: t.Optional[list[logging.Handler]] = None,
-    prefix_styles: t.Optional[dict[int, t.Optional[Styles]]] = None,
-    **kwargs: t.Any,
+    root_handlers: list[logging.Handler] | None = None,
+    prefix_styles: dict[int, Styles | None] | None = None,
+    **kwargs: t.Any,  # noqa: ANN401
 ) -> t.Callable[[FC], FC]:
-    """Adds a verbose option.
+    """Add a verbose option.
 
     A flag to switch between standard output and verbose output. The `--verbose` flag should be passed before any other
     eager options to ensure the desired verbosity level is set before the other options are evaluated. This option
@@ -150,7 +155,7 @@ def verbose_option(
     :param kwargs: Extra arguments passed to `click.option`.
     """
 
-    def callback(ctx: click.Context, param: click.Parameter, value: bool) -> None:  # pylint: disable=unused-argument
+    def callback(ctx: click.Context, param: click.Parameter, value: bool) -> None:  # noqa: ARG001, FBT001
         root_logger = logging.getLogger()
         root_logger.setLevel(logging.DEBUG if value else logging.INFO)
         logger.setLevel(root_logger.level)
@@ -176,11 +181,11 @@ def verbose_option(
 def verbosity_option(
     logger: logging.Logger,
     *param_decls: str,
-    root_handlers: t.Optional[list[logging.Handler]] = None,
-    prefix_styles: t.Optional[dict[int, t.Optional[Styles]]] = None,
-    **kwargs: t.Any,
+    root_handlers: list[logging.Handler] | None = None,
+    prefix_styles: dict[int, Styles | None] | None = None,
+    **kwargs: t.Any,  # noqa: ANN401
 ) -> t.Callable[[FC], FC]:
-    """Adds a configurable verbosity option.
+    """Add a configurable verbosity option.
 
     The `--verbosity` flag should be passed before any other eager options to ensure the desired verbosity level is set
     before the other options are evaluated. This option initializes the logging environment so it is not necessary to
@@ -202,7 +207,7 @@ def verbosity_option(
     :param kwargs: Extra arguments passed to `click.option`.
     """
 
-    def callback(ctx: click.Context, param: click.Parameter, value: str) -> None:  # pylint: disable=unused-argument
+    def callback(ctx: click.Context, param: click.Parameter, value: str) -> None:  # noqa: ARG001
         root_logger = logging.getLogger()
         root_logger.setLevel(getattr(logging, value.upper()))
         logger.setLevel(root_logger.level)

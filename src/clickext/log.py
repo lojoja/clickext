@@ -1,5 +1,4 @@
-"""
-clickext.log
+"""clickext.log.
 
 Logging and console output handling for clickext programs.
 """
@@ -17,41 +16,29 @@ QUIET_LEVEL_NUM = 1000
 
 
 class Styles(t.TypedDict, total=False):
-    """Style types for `click.style`"""
+    """Style types for `click.style`."""
 
-    fg: t.Optional[int | t.Tuple[int, int, int] | str]
-    bg: t.Optional[int | t.Tuple[int, int, int] | str]
-    bold: t.Optional[bool]
-    dim: t.Optional[bool]
-    underline: t.Optional[bool]
-    overline: t.Optional[bool]
-    italic: t.Optional[bool]
-    blink: t.Optional[bool]
-    reverse: t.Optional[bool]
-    strikethrough: t.Optional[bool]
+    fg: int | tuple[int, int, int] | str | None
+    bg: int | tuple[int, int, int] | str | None
+    bold: bool | None
+    dim: bool | None
+    underline: bool | None
+    overline: bool | None
+    italic: bool | None
+    blink: bool | None
+    reverse: bool | None
+    strikethrough: bool | None
     reset: bool
 
 
 class ConsoleFormatter(logging.Formatter):
     """Format log messages for the console.
 
-     By default, "INFO" level messages are passed through as-is. All other levels are formatted with a level name
-     prefix: "{level:} {msg}".
-
-    :param prefix_styles: A mapping of log level numbers to `click.style` parameters used to style the prefix in the
-    formatted message. Style parameters are merged with the defaults unless styles is set to `None` in which case
-    messages for that level will not be prefixed with the level name. Unknown levels are silently ignored. Example:
-
-    ```
-    prefix_styles = {
-        logging.CRITICAL: {"fg": "purple"}, // fg=purple (overrides default)
-        logging.DEBUG: {"bg": "green"}, // fg=blue, bg=green (merged with default)
-        logging.ERROR: None // (will not prefix or style ERROR level messages)
-    }
-    ```
+    By default, "INFO" level messages are passed through as-is. All other levels are formatted with a level name
+    prefix: "{level:} {msg}".
     """
 
-    _default_styles: dict[int, Styles] = {
+    _default_styles: t.ClassVar[dict[int, Styles]] = {
         logging.CRITICAL: {"fg": "red"},
         logging.DEBUG: {"fg": "blue"},
         logging.ERROR: {"fg": "red"},
@@ -59,21 +46,36 @@ class ConsoleFormatter(logging.Formatter):
         logging.WARNING: {"fg": "yellow"},
     }
 
-    def __init__(self, *, prefix_styles: t.Optional[dict[int, t.Optional[Styles]]] = None):
+    def __init__(self, *, prefix_styles: dict[int, Styles | None] | None = None) -> None:
+        """Initialize console formatter.
+
+        :param prefix_styles: A mapping of log level numbers to `click.style` parameters used to style the prefix in the
+        formatted message. Style parameters are merged with the defaults unless styles is set to `None` in which case
+        messages for that level will not be prefixed with the level name. Unknown levels are silently ignored. Example:
+
+        ```
+        prefix_styles = {
+            logging.CRITICAL: {"fg": "purple"}, // fg=purple (overrides default)
+            logging.DEBUG: {"bg": "green"}, // fg=blue, bg=green (merged with default)
+            logging.ERROR: None // (will not prefix or style ERROR level messages)
+        }
+        ```
+        """
         super().__init__()
-        self.prefix_styles: dict[int, t.Optional[Styles]] = {}
+        self.prefix_styles: dict[int, Styles | None] = {}
 
         if prefix_styles is None:
             prefix_styles = {}
 
         for level, style in self._default_styles.items():
-            style_override: t.Optional[Styles] = {}
+            style_override: Styles | None = {}
 
             if level in prefix_styles:
                 style_override = prefix_styles[level]
 
             self.prefix_styles[level] = {} if style_override is None else {**style, **style_override}
 
+    @t.override
     def format(self, record: logging.LogRecord) -> str:
         record.message = record.getMessage().strip()
 
@@ -103,19 +105,20 @@ class ConsoleHandler(logging.Handler):
     Writes to stderr if the record level is `logging.WARNING` or greater, otherwise to stdout.
     """
 
+    @t.override
     def emit(self, record: logging.LogRecord) -> None:
         try:
             msg = self.format(record)
             click.echo(msg, err=record.levelno >= logging.WARNING)
-        except Exception:  # pylint: disable=broad-except
+        except Exception:  # noqa: BLE001
             self.handleError(record)
 
 
 def init_logging(
     logger: logging.Logger,
     level: int | str = logging.INFO,
-    root_handlers: t.Optional[list[logging.Handler]] = None,
-    prefix_styles: t.Optional[dict[int, t.Optional[Styles]]] = None,
+    root_handlers: list[logging.Handler] | None = None,
+    prefix_styles: dict[int, Styles | None] | None = None,
 ) -> None:
     """Initialize program logging.
 
@@ -162,7 +165,7 @@ def init_logging(
 
     root_logger.setLevel(level)
 
-    logging.captureWarnings(True)
+    logging.captureWarnings(True)  # noqa: FBT003
     logging.raiseExceptions = level == logging.DEBUG
 
     logger.setLevel(level)

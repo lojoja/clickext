@@ -1,5 +1,4 @@
-"""
-clickext.exceptions
+"""clickext.exceptions.
 
 Logger-aware exception handling.
 """
@@ -17,7 +16,7 @@ if t.TYPE_CHECKING:
 
 
 def patch_exceptions(logger: logging.Logger) -> None:
-    """Sends click and other uncaught exceptions to a logger.
+    """Send click and other uncaught exceptions to a logger.
 
     Patches `click.ClickException`, `click.UsageError`, their children, and `sys.excepthook` to override the default
     behavior of printing a message directly to the console. Instead, messages will be printed consistent with the
@@ -35,17 +34,17 @@ def patch_exceptions(logger: logging.Logger) -> None:
     sys.excepthook = _excepthook
 
 
-def _click_exception_patch(self: click.ClickException, file: t.Optional[t.IO] = None) -> None:
+def _click_exception_patch(self: click.ClickException, file: t.IO | None = None) -> None:
     """Patch for `click.ClickException.show` that sends output to a logger."""
-    logger = t.cast(logging.Logger, self.logger)  # pyright: ignore[reportAttributeAccessIssue]
+    logger = t.cast("logging.Logger", self.logger)  # pyright: ignore[reportAttributeAccessIssue]
     file = click.get_text_stream("stderr") if file is None else file
     exc_info = self if logger.getEffectiveLevel() == logging.DEBUG else None
     logger.error(self.format_message(), exc_info=exc_info)
 
 
-def _click_usage_error_patch(self: click.UsageError, file: t.Optional[t.IO] = None) -> None:
+def _click_usage_error_patch(self: click.UsageError, file: t.IO | None = None) -> None:
     """Patch for `click.UsageError.show` that sends output to a logger."""
-    logger = t.cast(logging.Logger, self.logger)  # pyright: ignore[reportAttributeAccessIssue]
+    logger = t.cast("logging.Logger", self.logger)  # pyright: ignore[reportAttributeAccessIssue]
     file = click.get_text_stream("stderr") if file is None else file
     exc_info = self if logger.getEffectiveLevel() == logging.DEBUG else None
 
@@ -62,7 +61,7 @@ def _click_usage_error_patch(self: click.UsageError, file: t.Optional[t.IO] = No
 
 def _excepthook(exc_type: type[BaseException], exc_value: BaseException, exc_traceback: TracebackType | None) -> None:
     """Patch for `sys.excepthook` that send output to a logger."""
-    logger = t.cast(logging.Logger, click.ClickException.logger)  # pyright: ignore[reportAttributeAccessIssue]
+    logger = t.cast("logging.Logger", click.ClickException.logger)  # pyright: ignore[reportAttributeAccessIssue]
     exc_info = (exc_type, exc_value, exc_traceback) if logger.level == logging.DEBUG else None
     msg = "KeyboardInterrupt" if issubclass(exc_type, KeyboardInterrupt) else str(exc_value)
     logger.critical(msg, exc_info=exc_info)
