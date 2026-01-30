@@ -70,7 +70,7 @@ filterwarnings = ["ignore:::.*pytest_cov*"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py313"
+target-version = "py310"
 src = ["src", "tests"]
 extend-exclude = ["build"]
 

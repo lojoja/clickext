@@ -26,7 +26,7 @@ if t.TYPE_CHECKING:
     from .log import Styles
 
 
-type _AnyCallable = t.Callable[..., t.Any]
+_AnyCallable: t.TypeAlias = t.Callable[..., t.Any]
 FC = t.TypeVar("FC", bound=_AnyCallable | ClickextCommand)
 
 
