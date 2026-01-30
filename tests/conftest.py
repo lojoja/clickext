@@ -9,7 +9,7 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def reset_environment_fixture() -> t.Generator[None]:
+def reset_environment_fixture() -> t.Generator[None, None, None]:
     """Reset the global environment after each test."""
     _sys_excepthook = sys.excepthook
     _click_exception_show = click.ClickException.show
@@ -36,7 +36,7 @@ def reset_environment_fixture() -> t.Generator[None]:
 
 
 @pytest.fixture(name="logger")
-def logger_fixture() -> t.Generator[logging.Logger]:
+def logger_fixture() -> t.Generator[logging.Logger, None, None]:
     """Create a clean logger and resets it after tests."""
     logger = logging.getLogger("test_logger")
     yield logger
