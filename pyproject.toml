@@ -60,10 +60,9 @@ markers = []
 filterwarnings = []
 
 [tool.ruff]
-line-length = 120
-target-version = "py310"
 src = ["src", "tests"]
-extend-exclude = ["build"]
+target-version = "py310"
+line-length = 120
 
 [tool.ruff.format]
 quote-style = "double"
