@@ -1,56 +1,51 @@
-[build-system]
-requires = ["poetry-core>=2.0.0"]
-build-backend = "poetry.core.masonry.api"
-
 [project]
 name = "clickext"
 version = "1.0.6a0"
 description = "Extended features for the Python click library"
-license = {text = "MIT"}
-readme = "README.md"
-authors = [
-  { name = "lojoja", email = "dev@lojoja.com" }
-]
+authors = [{ name = "lojoja", email = "dev@lojoja.com" }]
 requires-python = ">=3.10,<4"
-dependencies = [
-  "click==8.*",
-  "pyyaml==6.*",
-  "tomli==2.*"
+readme = "README.md"
+license = { text = "MIT" }
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
-dynamic = ["classifiers"]
+dependencies = [
+    "click==8.*",
+    "pyyaml==6.*",
+    "tomli==2.*",
+]
+
+[dependency-groups]
+dev = [
+    "black>=26.1.0,<27",
+    "pylint>=4.0.4,<5",
+    "pyright>=1.1.408,<2",
+    "pytest>=9.0.2,<10",
+    "pytest-cov>=4.1,<8.0",
+    "pytest-mock>=3.15.1,<4",
+]
 
 [project.urls]
 homepage = "https://github.com/lojoja/clickext"
 repository = "https://github.com/lojoja/clickext"
 "Bug Tracker" = "https://github.com/lojoja/clickext/issues"
 
-[tool.poetry]
-classifiers = [
-  "Development Status :: 5 - Production/Stable",
-  "Intended Audience :: Developers",
-  "Operating System :: OS Independent",
-  "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-]
-
-[tool.poetry.group.dev.dependencies]
-black = "^26.1.0"
-pylint = "^4.0.4"
-pyright = "^1.1.408"
-pytest = "^9.0.2"
-pytest-cov = ">=4.1,<8.0"
-pytest-mock = "^3.15.1"
+[build-system]
+requires = ["uv_build>=0.9.26,<0.10.0"]
+build-backend = "uv_build"
 
 [tool.black]
 include = '\.pyi?$'
 line-length = 120
 skip-magic-trailing-comma = true
-
-[tool.coverage.run]
-source = ["clickext"]
-omit = ["tests/"]
-branch = true
 
 [tool.coverage.report]
 exclude_lines = [
@@ -61,6 +56,11 @@ exclude_lines = [
 ]
 fail_under = 100
 show_missing = true
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests"]
+branch = true
 
 [tool.pylint.main]
 ignore-paths = ["^(.*/)?.venv/.*$", "^(.*/)?dist/.*$"]
