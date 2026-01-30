@@ -7,29 +7,33 @@ requires-python = ">=3.10,<4"
 readme = "README.md"
 license = { text = "MIT" }
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
-    "Intended Audience :: Developers",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "click==8.*",
-    "pyyaml==6.*",
-    "tomli==2.*",
+  "click==8.*",
+  "pyyaml==6.*",
+  "tomli==2.*",
 ]
+
+[build-system]
+requires = ["uv_build>=0.9.26,<0.10.0"]
+build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "pytest>=9.0.2,<10",
-    "pytest-cov>=4.1,<8.0",
-    "pytest-mock>=3.15.1,<4",
-    "ruff>=0.14.14",
-    "ty>=0.0.14",
+  "pytest>=9.0.2,<10",
+  "pytest-cov>=7.0.0,<8.0",
+  "pytest-mock>=3.15.1,<4",
+  "ruff>=0.14.14",
+  "ty>=0.0.14",
 ]
 
 [project.urls]
@@ -37,15 +41,8 @@ homepage = "https://github.com/lojoja/clickext"
 repository = "https://github.com/lojoja/clickext"
 "Bug Tracker" = "https://github.com/lojoja/clickext/issues"
 
-[build-system]
-requires = ["uv_build>=0.9.26,<0.10.0"]
-build-backend = "uv_build"
-
 [tool.coverage.report]
-exclude_lines = [
-  "pragma: no cover",
-  "def __repr__",
-  "if log:",
+exclude_also = [
   "if t.TYPE_CHECKING",
 ]
 fail_under = 100
@@ -56,17 +53,11 @@ source = ["src"]
 omit = ["tests"]
 branch = true
 
-[tool.pyright]
-ignore = [".venv/*", "dist/*"]
-pythonVersion = "3.10"
-venv = ".venv"
-venvPath = "."
-
-[tool.pytest.ini_options]
-addopts = "--strict-markers"
+[tool.pytest]
 testpaths = ["tests"]
+strict_markers = true
 markers = []
-filterwarnings = ["ignore:::.*pytest_cov*"]
+filterwarnings = []
 
 [tool.ruff]
 line-length = 120
