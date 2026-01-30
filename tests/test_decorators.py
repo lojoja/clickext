@@ -26,7 +26,7 @@ def test_config_option_file_read(
         expected_output = "Error: Failed to read configuration file\n"
 
     @click.command(cls=ClickextCommand)
-    @config_option(config["json_valid"], **opts)
+    @config_option(config["json_valid"], **opts)  # ty:ignore[invalid-argument-type]
     def cmd() -> None: ...
 
     runner = CliRunner()
@@ -169,7 +169,7 @@ def test_verbose_option_prefix_styles(logger: logging.Logger) -> None:
     result = runner.invoke(cmd)
 
     assert result.exit_code == 0
-    assert logging.getLogger().handlers[0].formatter.prefix_styles[logging.INFO] == {"fg": "red"}
+    assert logging.getLogger().handlers[0].formatter.prefix_styles[logging.INFO] == {"fg": "red"}  # ty:ignore[unresolved-attribute]
 
 
 @pytest.mark.parametrize("default", [True, False])
@@ -177,7 +177,7 @@ def test_verbosity_option_default(logger: logging.Logger, default: bool) -> None
     opts = {} if default else {"default": "ERROR"}
 
     @click.command(cls=ClickextCommand)
-    @verbosity_option(logger, **opts)
+    @verbosity_option(logger, **opts)  # ty:ignore[invalid-argument-type]
     def cmd() -> None:
         logger.info("msg")
 
@@ -265,7 +265,7 @@ def test_verbosity_option_prefix_styles(logger: logging.Logger) -> None:
     result = runner.invoke(cmd)
 
     assert result.exit_code == 0
-    assert logging.getLogger().handlers[0].formatter.prefix_styles[logging.INFO] == {"fg": "red"}
+    assert logging.getLogger().handlers[0].formatter.prefix_styles[logging.INFO] == {"fg": "red"}  # ty:ignore[unresolved-attribute]
 
 
 def test_verbosity_option_root_handlers(logger: logging.Logger) -> None:

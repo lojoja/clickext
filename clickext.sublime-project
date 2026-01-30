@@ -10,10 +10,16 @@
       "LSP-pylsp": {
         "enabled": false
       },
+      "LSP-pyright": {
+        "enabled": false
+      },
       "LSP-ruff": {
         "enabled": true,
         "command": [".venv/bin/ruff", "server"]
       },
+      "LSP-ty": {
+        "enabled": true,
+        "command": [".venv/bin/ty", "server"]
       },
       "ltex-ls": {
         "settings": {

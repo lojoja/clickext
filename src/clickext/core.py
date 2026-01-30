@@ -261,13 +261,14 @@ class ClickextGroup(ClickextCommand, click.Group):
 
         return params
 
-    def make_parser(self, ctx: click.Context, globals_only: bool = False) -> click.OptionParser:  # noqa: FBT001, FBT002
+    def make_parser(self, ctx: click.Context, globals_only: bool = False) -> click.OptionParser:  # noqa: FBT001, FBT002  # ty:ignore[invalid-type-form]
         """Create the underlying option parser for this command.
 
         :param ctx: The current `click.Context` object.
         :param globals_only: Whether the parser should be restricted to global options.
         """
-        parser = click.OptionParser(ctx)
+        parser = click.OptionParser(ctx)  # ty:ignore[call-non-callable]
+
         global_options = self.list_global_options()
 
         for param in self.get_params(ctx):
@@ -338,9 +339,7 @@ class ClickextGroup(ClickextCommand, click.Group):
 
         return global_args + args
 
-    def add_command(  # pyright: ignore[reportIncompatibleMethodOverride]
-        self, cmd: ClickextCommand, name: str | None = None
-    ) -> None:
+    def add_command(self, cmd: ClickextCommand, name: str | None = None) -> None:  # ty:ignore[invalid-method-override]
         """Register a command with this group.
 
         The command must be a `ClickextCommand`. Global options are stored separately on the command so they are
@@ -374,7 +373,7 @@ class ClickextGroup(ClickextCommand, click.Group):
                 cmd_name = name
                 break
 
-        return super().get_command(ctx, cmd_name)  # pyright: ignore[reportReturnType]
+        return super().get_command(ctx, cmd_name)  # ty:ignore[invalid-return-type]
 
     def validate_command(self, cmd: ClickextCommand, name: str) -> None:
         """Validate global options and shared parameters for a command.

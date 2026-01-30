@@ -75,8 +75,7 @@ class ConsoleFormatter(logging.Formatter):
 
             self.prefix_styles[level] = {} if style_override is None else {**style, **style_override}
 
-    @t.override
-    def format(self, record: logging.LogRecord) -> str:
+    def format(self, record: logging.LogRecord) -> str:  # noqa: D102
         record.message = record.getMessage().strip()
 
         prefix_style = self.prefix_styles[record.levelno]
@@ -105,8 +104,7 @@ class ConsoleHandler(logging.Handler):
     Writes to stderr if the record level is `logging.WARNING` or greater, otherwise to stdout.
     """
 
-    @t.override
-    def emit(self, record: logging.LogRecord) -> None:
+    def emit(self, record: logging.LogRecord) -> None:  # noqa: D102
         try:
             msg = self.format(record)
             click.echo(msg, err=record.levelno >= logging.WARNING)

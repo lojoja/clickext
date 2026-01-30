@@ -82,7 +82,7 @@ def test_console_handler_emit(capsys: pytest.CaptureFixture, level: int, valid: 
 
     handler = ConsoleHandler()
     handler.setFormatter(ConsoleFormatter())
-    handler.emit(record)
+    handler.emit(record)  # ty:ignore[invalid-argument-type]
 
     captured = capsys.readouterr()
 

@@ -10,7 +10,7 @@ from clickext.log import init_logging
 
 def test_patch_exceptions_click_exceptions(logger: logging.Logger) -> None:
     patch_exceptions(logger)
-    assert click.ClickException.logger is logger  # pyright: ignore[reportAttributeAccessIssue]
+    assert click.ClickException.logger is logger  # ty:ignore[unresolved-attribute]
     assert click.ClickException.show is _click_exception_patch
     assert click.UsageError.show is _click_usage_error_patch
 
