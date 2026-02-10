@@ -17,7 +17,7 @@ updates:
     schedule:
       interval: weekly
     groups:
-      dev:
+      python-dev:
         dependency-type: development
-      prod:
+      python-prod:
         dependency-type: production
