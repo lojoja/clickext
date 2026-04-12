@@ -50,13 +50,13 @@ jobs:
           version: ${{ inputs.publish == true && 'latest' || github.event.release.id }}
 
       - name: Publish on Test PyPi
-        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b
         with:
           packages-dir: ${{ env.ASSET_PATH }}
           repository-url: https://test.pypi.org/legacy/
 
       - name: Publish on PyPi
-        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b
         with:
           packages-dir: ${{ env.ASSET_PATH }}
 
@@ -74,7 +74,7 @@ jobs:
           path: ${{ env.ARTIFACT_PATH }}
 
       - name: Create release
-        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
         with:
           draft: true
           fail_on_unmatched_files: true
