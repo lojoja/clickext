@@ -74,7 +74,7 @@ docstring-code-line-length = "dynamic"
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["COM812", "D203", "D213", "E111", "E114", "E117"]
+ignore = ["COM812","CPY001", "D203", "D213", "E111", "E114", "E117"]
 fixable = ["ALL"]
 unfixable = []
 mccabe.max-complexity = 15 # 10
@@ -92,6 +92,7 @@ mccabe.max-complexity = 15 # 10
   "FBT001",
   "INP001",
   "PLR0913",
+  "PLR0917",
   "S101"
 ]
 
