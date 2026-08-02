@@ -50,13 +50,13 @@ jobs:
           version: ${{ inputs.publish == true && 'latest' || github.event.release.id }}
 
       - name: Publish on Test PyPi
-        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
         with:
           packages-dir: ${{ env.ASSET_PATH }}
           repository-url: https://test.pypi.org/legacy/
 
       - name: Publish on PyPi
-        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
         with:
           packages-dir: ${{ env.ASSET_PATH }}
 
