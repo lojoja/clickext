@@ -30,10 +30,10 @@ pyyaml = "^6.0.0"
 tomli = "^2.0.1"
 
 [tool.poetry.group.dev.dependencies]
-black = "^24.0.0"
+black = ">=24,<27"
 pylint = "^3.0.0"
 pyright = "^1.1.349"
-pytest = "^8.0.0"
+pytest = ">=8,<10"
 pytest-cov = ">=4.1,<6.0"
 pytest-mock = "^3.12.0"
 
