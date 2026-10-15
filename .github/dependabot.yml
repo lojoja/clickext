@@ -11,6 +11,8 @@ updates:
         patterns:
           - "*"
 
+  # uv Dependabot does not support group dependency-type
+  # https://github.com/dependabot/dependabot-core/issues/13202
   - package-ecosystem: uv
     target-branch: dev
     directory: /
@@ -18,6 +20,7 @@ updates:
       interval: weekly
     groups:
       python-dev:
-        dependency-type: development
-      python-prod:
-        dependency-type: production
+        patterns:
+          - pytest*
+          - ruff
+          - ty
