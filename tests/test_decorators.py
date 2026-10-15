@@ -208,7 +208,7 @@ def test_verbosity_option_level(logger: logging.Logger, level: str | None) -> No
         cmd_msg_level = QUIET_LEVEL_NUM
         expected_output = ""
     elif level is not None and level != "INFO":
-        cmd_msg_level = logging.getLevelName(level)
+        cmd_msg_level = getattr(logging, level.upper(), cmd_msg_level)
         expected_output = f"{level.title()}: msg\n"
 
     @click.command(cls=ClickextCommand)

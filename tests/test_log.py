@@ -131,7 +131,7 @@ def test_init_logging_level(capsys: pytest.CaptureFixture, logger: logging.Logge
     logger.info("info")
     logger.critical("critical")
 
-    expected_level = level if isinstance(level, int) else logging.getLevelName(level)
+    expected_level = level if isinstance(level, int) else getattr(logging, level.upper(), logging.INFO)
     expected_out = ""
     expected_err = ""
 
