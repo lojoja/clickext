@@ -219,10 +219,10 @@ def test_verbosity_option_level(logger: logging.Logger, level: str | None) -> No
     runner = CliRunner()
     result = runner.invoke(cmd, [] if level is None else ["-v", level])
 
-    assert hasattr(logging, QUIET_LEVEL_NAME)  # test that `log.init_logging` was called
     assert logging.raiseExceptions is (level == "DEBUG")
     assert logging.getLogger().level == cmd_msg_level
     assert logger.level == logging.getLogger().level
+    assert hasattr(logging, QUIET_LEVEL_NAME)  # test that `log.init_logging` was called
 
     assert result.exit_code == expected_code
     assert result.output == expected_output
