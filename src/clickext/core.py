@@ -5,10 +5,16 @@ Extended functionality for the click library.
 
 import errno
 import typing as t
+import warnings
 
 import click
 
 __all__ = ["ClickextCommand", "ClickextGroup"]
+
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", DeprecationWarning)
+    OptionParser = click.OptionParser
 
 
 class ClickextCommand(click.Command):
@@ -261,13 +267,13 @@ class ClickextGroup(ClickextCommand, click.Group):
 
         return params
 
-    def make_parser(self, ctx: click.Context, globals_only: bool = False) -> click.OptionParser:  # noqa: FBT001, FBT002  # ty:ignore[invalid-type-form]
+    def make_parser(self, ctx: click.Context, globals_only: bool = False) -> OptionParser:  # noqa: FBT001, FBT002  # ty:ignore[invalid-type-form]
         """Create the underlying option parser for this command.
 
         :param ctx: The current `click.Context` object.
         :param globals_only: Whether the parser should be restricted to global options.
         """
-        parser = click.OptionParser(ctx)  # ty:ignore[call-non-callable]
+        parser = OptionParser(ctx)  # ty:ignore[call-non-callable]
 
         global_options = self.list_global_options()
 
@@ -315,7 +321,7 @@ class ClickextGroup(ClickextCommand, click.Group):
         parser = self.make_parser(ctx, globals_only=True)
 
         try:
-            param_order: list[click.Option]  # globals can only be `click.Option`
+            param_order: list[click.Parameter]
             opts, args, param_order = parser.parse_args(args)
         finally:
             for setting, value in original_ctx_settings.items():
@@ -324,6 +330,8 @@ class ClickextGroup(ClickextCommand, click.Group):
         global_args = []
 
         for param in param_order:
+            param = t.cast("click.Option", param)  # globals can only be a `click.Option`
+
             global_args.append(param.opts[0])
 
             if param.is_flag or not param.name:
@@ -339,7 +347,7 @@ class ClickextGroup(ClickextCommand, click.Group):
 
         return global_args + args
 
-    def add_command(self, cmd: ClickextCommand, name: str | None = None) -> None:  # ty:ignore[invalid-method-override]
+    def add_command(self, cmd: click.Command, name: str | None = None) -> None:
         """Register a command with this group.
 
         The command must be a `ClickextCommand`. Global options are stored separately on the command so they are

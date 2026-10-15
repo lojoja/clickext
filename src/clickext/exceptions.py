@@ -8,11 +8,16 @@ from __future__ import annotations
 import logging
 import sys
 import typing as t
+import warnings
 
 import click
 
 if t.TYPE_CHECKING:
     from types import TracebackType
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", DeprecationWarning)
+    get_text_stream = click.get_text_stream
 
 
 def patch_exceptions(logger: logging.Logger) -> None:
@@ -29,15 +34,15 @@ def patch_exceptions(logger: logging.Logger) -> None:
     :param logger: The program logger. See `clickext.log.init_logging`.
     """
     click.ClickException.logger = logger  # ty:ignore[unresolved-attribute]
-    click.ClickException.show = _click_exception_patch  # ty:ignore[invalid-assignment]
-    click.UsageError.show = _click_usage_error_patch  # ty:ignore[invalid-assignment]
+    click.ClickException.show = _click_exception_patch  # ty:ignore[invalid-assignment, unused-ignore-comment, unused-ignore-comment]
+    click.UsageError.show = _click_usage_error_patch  # ty:ignore[invalid-assignment, unused-ignore-comment, unused-ignore-comment]
     sys.excepthook = _excepthook
 
 
 def _click_exception_patch(self: click.ClickException, file: t.IO[t.Any] | None = None) -> None:
     """Patch for `click.ClickException.show` that sends output to a logger."""
     logger = t.cast("logging.Logger", self.logger)  # ty:ignore[unresolved-attribute]
-    file = click.get_text_stream("stderr") if file is None else file
+    file = get_text_stream("stderr") if file is None else file  # ty: ignore [ call-non-callable, unused-ignore-comment, unused-ignore-comment]
     exc_info = self if logger.getEffectiveLevel() == logging.DEBUG else None
     logger.error(self.format_message(), exc_info=exc_info)
 
@@ -45,7 +50,7 @@ def _click_exception_patch(self: click.ClickException, file: t.IO[t.Any] | None 
 def _click_usage_error_patch(self: click.UsageError, file: t.IO[t.Any] | None = None) -> None:
     """Patch for `click.UsageError.show` that sends output to a logger."""
     logger = t.cast("logging.Logger", self.logger)  # ty:ignore[unresolved-attribute]
-    file = click.get_text_stream("stderr") if file is None else file
+    file = get_text_stream("stderr") if file is None else file  # ty: ignore [ call-non-callable, unused-ignore-comment, unused-ignore-comment]
     exc_info = self if logger.getEffectiveLevel() == logging.DEBUG else None
 
     if self.ctx is not None:
