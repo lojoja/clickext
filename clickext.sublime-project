@@ -15,11 +15,11 @@
       },
       "LSP-ruff": {
         "enabled": true,
-        "command": [".venv/bin/ruff", "server"]
+        "server_path": ".venv/bin/ruff"
       },
       "LSP-ty": {
         "enabled": true,
-        "command": [".venv/bin/ty", "server"]
+        "server_path": ".venv/bin/ty"
       },
       "ltex-ls": {
         "settings": {
