@@ -169,7 +169,7 @@ def test_verbose_option_prefix_styles(logger: logging.Logger) -> None:
     result = runner.invoke(cmd)
 
     assert result.exit_code == 0
-    assert logging.getLogger().handlers[0].formatter.prefix_styles[logging.INFO] == {"fg": "red"}  # ty:ignore[unresolved-attribute]
+    assert logging.getLogger().handlers[0].formatter.prefix_styles[logging.INFO] == {"fg": "red"}  # ty:ignore[missing-attribute]
 
 
 @pytest.mark.parametrize("default", [True, False])
@@ -265,7 +265,7 @@ def test_verbosity_option_prefix_styles(logger: logging.Logger) -> None:
     result = runner.invoke(cmd)
 
     assert result.exit_code == 0
-    assert logging.getLogger().handlers[0].formatter.prefix_styles[logging.INFO] == {"fg": "red"}  # ty:ignore[unresolved-attribute]
+    assert logging.getLogger().handlers[0].formatter.prefix_styles[logging.INFO] == {"fg": "red"}  # ty:ignore[missing-attribute]
 
 
 def test_verbosity_option_root_handlers(logger: logging.Logger) -> None:
