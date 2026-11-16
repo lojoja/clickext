@@ -33,7 +33,7 @@ def patch_exceptions(logger: logging.Logger) -> None:
 
     :param logger: The program logger. See `clickext.log.init_logging`.
     """
-    click.ClickException.logger = logger  # ty:ignore[unresolved-attribute]
+    click.ClickException.logger = logger  # ty:ignore[missing-attribute]
     click.ClickException.show = _click_exception_patch  # ty:ignore[invalid-assignment, unused-ignore-comment, unused-ignore-comment]
     click.UsageError.show = _click_usage_error_patch  # ty:ignore[invalid-assignment, unused-ignore-comment, unused-ignore-comment]
     sys.excepthook = _excepthook
@@ -41,16 +41,16 @@ def patch_exceptions(logger: logging.Logger) -> None:
 
 def _click_exception_patch(self: click.ClickException, file: t.IO[t.Any] | None = None) -> None:
     """Patch for `click.ClickException.show` that sends output to a logger."""
-    logger = t.cast("logging.Logger", self.logger)  # ty:ignore[unresolved-attribute]
-    file = get_text_stream("stderr") if file is None else file  # ty: ignore [ call-non-callable, unused-ignore-comment, unused-ignore-comment]
+    logger = t.cast("logging.Logger", self.logger)  # ty:ignore[missing-attribute]
+    file = get_text_stream("stderr") if file is None else file  # ty: ignore [ not-callable, unused-ignore-comment, unused-ignore-comment]
     exc_info = self if logger.getEffectiveLevel() == logging.DEBUG else None
     logger.error(self.format_message(), exc_info=exc_info)
 
 
 def _click_usage_error_patch(self: click.UsageError, file: t.IO[t.Any] | None = None) -> None:
     """Patch for `click.UsageError.show` that sends output to a logger."""
-    logger = t.cast("logging.Logger", self.logger)  # ty:ignore[unresolved-attribute]
-    file = get_text_stream("stderr") if file is None else file  # ty: ignore [ call-non-callable, unused-ignore-comment, unused-ignore-comment]
+    logger = t.cast("logging.Logger", self.logger)  # ty:ignore[missing-attribute]
+    file = get_text_stream("stderr") if file is None else file  # ty: ignore [ not-callable, unused-ignore-comment, unused-ignore-comment]
     exc_info = self if logger.getEffectiveLevel() == logging.DEBUG else None
 
     if self.ctx is not None:
@@ -66,7 +66,7 @@ def _click_usage_error_patch(self: click.UsageError, file: t.IO[t.Any] | None = 
 
 def _excepthook(exc_type: type[BaseException], exc_value: BaseException, exc_traceback: TracebackType | None) -> None:
     """Patch for `sys.excepthook` that send output to a logger."""
-    logger = t.cast("logging.Logger", click.ClickException.logger)  # ty:ignore[unresolved-attribute]
+    logger = t.cast("logging.Logger", click.ClickException.logger)  # ty:ignore[missing-attribute]
     exc_info = (exc_type, exc_value, exc_traceback) if logger.level == logging.DEBUG else None
     msg = "KeyboardInterrupt" if issubclass(exc_type, KeyboardInterrupt) else str(exc_value)
     logger.critical(msg, exc_info=exc_info)

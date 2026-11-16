@@ -273,7 +273,7 @@ class ClickextGroup(ClickextCommand, click.Group):
         :param ctx: The current `click.Context` object.
         :param globals_only: Whether the parser should be restricted to global options.
         """
-        parser = OptionParser(ctx)  # ty:ignore[call-non-callable]
+        parser = OptionParser(ctx)  # ty:ignore[not-callable]
 
         global_options = self.list_global_options()
 
@@ -381,7 +381,7 @@ class ClickextGroup(ClickextCommand, click.Group):
                 cmd_name = name
                 break
 
-        return super().get_command(ctx, cmd_name)  # ty:ignore[invalid-return-type]
+        return super().get_command(ctx, cmd_name)  # ty:ignore[invalid-explicit-return]
 
     def validate_command(self, cmd: ClickextCommand, name: str) -> None:
         """Validate global options and shared parameters for a command.
